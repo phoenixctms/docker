@@ -67,10 +67,10 @@ CRON_PASSWORD=$(pwgen 24 1)
 # ./render.sh
 # cd /ctsms/build/ctsms
 # mvn -f web/pom.xml -Dmaven.test.skip=true
-# chmod 755 /ctsms/build/ctsms/web/target/ctsms-1.7.0.war
+# chmod 755 /ctsms/build/ctsms/web/target/ctsms-1.6.9.war
 # systemctl stop tomcat8
 # rm /var/lib/tomcat8/webapps/ROOT/ -rf
-# cp /ctsms/build/ctsms/web/target/ctsms-1.7.0.war /var/lib/tomcat8/webapps/ROOT.war
+# cp /ctsms/build/ctsms/web/target/ctsms-1.6.9.war /var/lib/tomcat8/webapps/ROOT.war
 
 
 echo "Initial database setup complete."
