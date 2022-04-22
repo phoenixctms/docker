@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y pwgen \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=javabuild /ctsms /ctsms
-COPY --from=javabuild /ctsms/war/ctsms-1.7.0.war /usr/local/tomcat/webapps/ROOT.war
+COPY --from=javabuild /ctsms/war/ctsms-1.8.0.war /usr/local/tomcat/webapps/ROOT.war
 
 # prepare /ctsms directory with default-config and master-data
 RUN wget -q https://raw.githubusercontent.com/phoenixctms/install-debian/master/dbtool.sh -O /ctsms/dbtool.sh
