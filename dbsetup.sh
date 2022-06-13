@@ -49,10 +49,10 @@ CRON_PASSWORD=$(pwgen 24 1)
 # FIXME - cron container?
 
 # ###setup cron
-# wget https://raw.githubusercontent.com/phoenixctms/install-debian/master/cron/ctsms -O /etc/cron.d/ctsms
+# wget --no-verbose https://raw.githubusercontent.com/phoenixctms/install-debian/master/cron/ctsms -O /etc/cron.d/ctsms
 # chown root:root /etc/cron.d/ctsms
 # chmod 644 /etc/cron.d/ctsms
-# wget https://raw.githubusercontent.com/phoenixctms/install-debian/master/cron/my_department -O /etc/cron.d/my_department
+# wget --no-verbose https://raw.githubusercontent.com/phoenixctms/install-debian/master/cron/my_department -O /etc/cron.d/my_department
 # chown root:root /etc/cron.d/my_department
 # chmod 644 /etc/cron.d/my_department
 # sed -r -i "s|-u cron -p 12345|-u my_department_cron -p ${CRON_PASSWORD}|" /etc/cron.d/my_department
