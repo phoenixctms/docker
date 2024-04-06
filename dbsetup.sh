@@ -22,7 +22,7 @@
 /ctsms/dbtool.sh -iai /ctsms/master_data/icd10gm2012_alphaid_edv_ascii_20110930.txt -e ISO-8859-1 -isr icd10gm2012syst_claml_20110923
 /ctsms/dbtool.sh -ios /ctsms/master_data/ops2012syst_claml_20111103.xml -sl de
 /ctsms/dbtool.sh -ioc /ctsms/master_data/ops2011alpha_edv_ascii_20111031.txt -osr ops2012syst_claml_20111103
-/ctsms/dbtool.sh -ia /ctsms/master_data/asp_register_20181005.xls
+/ctsms/dbtool.sh -ia /ctsms/master_data/asp_register_20240316.xls -e Cp1252
 
 DEPARTMENT_PASSWORD=$(pwgen 24 1)
 USER_PASSWORD=$(pwgen 24 1)
