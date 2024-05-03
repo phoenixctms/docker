@@ -1,4 +1,4 @@
-FROM debian:stretch AS javabuild
+FROM debian:bullseye AS javabuild
 
 RUN apt-get update && apt-get install -y \
 	openjdk-8-jdk \
