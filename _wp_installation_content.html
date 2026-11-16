@@ -1,0 +1,51 @@
+<h1>Installation</h1>
+<p>The Phoenix CTMS is an extensive application dedicated to run on enterprise hardware to serve many users. If you want to take a look and try it, the easiest path is <strong>Docker Compose</strong> (Windows, macOS, or Linux). No VirtualBox and no hour-long on-host Maven build are required (about 6–8&nbsp;GB RAM recommended).</p>
+<h2>Docker Compose (recommended)</h2>
+<ol>
+<li>Install <a href="https://docs.docker.com/get-docker/">Docker Desktop</a> (Windows/macOS) or Docker Engine + Compose (Linux).</li>
+<li>Clone and start the evaluation stack from <a href="https://github.com/phoenixctms/docker">phoenixctms/docker</a>:
+<pre class="brush: bash; title: ; notranslate">git clone https://github.com/phoenixctms/docker.git
+cd docker
+docker compose build
+docker compose up -d
+docker compose logs -f db-seed</pre>
+</li>
+<li>When seeding finishes, open <a href="http://localhost:8888">http://localhost:8888</a> and log in with the printed <strong>phoenix</strong> credentials.</li>
+<li>Optional demo data on first start: set <code>SEED_DEMO_DATA=true</code> before <code>docker compose up</code>, or see the repo README.</li>
+</ol>
+<p>Full details, environment variables, and reset commands are in the <a href="https://github.com/phoenixctms/docker">docker repository README</a>.</p>
+<h2>Virtual machine (.ova) alternative</h2>
+<p>If you prefer a full Debian appliance instead of Docker, use the automated .ova bootstrap (same hardware guidance: ~6&nbsp;GB RAM, some free disk, 2 CPU cores).</p>
+<ol>
+<li>Download and install a virtualization software package supporting <em>.ova</em> (Open Virtual Appliances) files. <a href="https://www.virtualbox.org/wiki/Downloads">Oracle VM VirtualBox</a> or <em>VMware Workstation/Player</em> are known to work and are available for various operating systems.</li>
+<li>Download <a href="/wp-content/uploads/downloads/deb_13_3_phoenix.ova">deb_13_3_phoenix.ova</a>. It is a vanilla <em>Debian 13</em> (Linux) virtual machine image without base packages but a bootstrap script placed to launch the <a href="https://github.com/phoenixctms/install-debian/blob/master/install.sh">Phoenix CTMS installation procedure</a>.</li>
+<li>Open <em>.ova</em> with the virtualization software, and power on the virtual machine.<img class="alignnone size-full wp-image-211" src="http://phoenixctms.org/wp-content/uploads/2017/12/installation_ova.png" alt="" width="795" height="352"></li>
+<li>Network connectivity is vital for installation and operation. The virtual machine uses a bridged network interface, which obtains its own IP address via DHCP. When prompted regarding the unknown preset network interface, just change it to the one available on your computer, which is suggested by default.<img class="alignnone size-full wp-image-255" src="http://phoenixctms.org/wp-content/uploads/2017/12/installation_change_interface.png" alt="" width="1119" height="419"></li>
+<li>After startup, the linux console shows the standard login prompt. Login once with username <strong>phoenix</strong>, password <strong>phoenix</strong>. The installation procedure will start immediately and therefore requires confirmation by providing the password <strong>phoenix</strong> one more time.<img class="size-full wp-image-208 alignnone" src="http://phoenixctms.org/wp-content/uploads/2017/12/installation_launch.png" alt="" width="721" height="327"></li>
+<li>The installation procedure will take around an hour to download, build and install from most recent upstream sources (Debian console can fade after some time). When finished, a default application user is provisioned and its credentials are printed to the console. <img class="size-full wp-image-204 alignnone" src="http://phoenixctms.org/wp-content/uploads/2017/12/installation_user_credentials.png" alt="" width="807" height="211"></li>
+<li>You might want to change the provided password right after logging in using your favourite browser. Note when opening the application URL the first time, you need to allow the browser accepting the self-signed certificate. It is also required to not block pop-ups (browser tabs).<img class="size-full wp-image-206 alignnone" src="http://phoenixctms.org/wp-content/uploads/2017/12/installation_change_password.png" alt="" width="641" height="298"></li>
+</ol>
+<p>You can also install on a bare Debian/Ubuntu host with <a href="https://github.com/phoenixctms/install-debian">install-debian</a> / <code>install.sh</code> (see the main <a href="https://github.com/phoenixctms/ctsms">ctsms</a> README).</p>
+<h1>Generating Demo Data</h1>
+<p>On the virtual machine / Debian install, you can populate the system with <em>demo data</em> by executing the command below in the linux console.<img class="size-full wp-image-205 alignnone" src="http://phoenixctms.org/wp-content/uploads/2017/12/installation_demo_data.png" alt="" width="810" height="179"></p>
+<p>This demo data generator simulates user entries for use cases and work flows that</p>
+<ol>
+<li>qualified for <em>test coverage</em> during a risk assessment,</li>
+<li>require proof of constant response times in large volume scenarios,</li>
+<li>... and to provide data to play with and help you to get an idea on how the system works.</li>
+</ol>
+<p>Running the generator effectively adds several departments with <em>random</em> names and items for each:</p>
+<ul>
+<li>Hierarchy of inventory items</li>
+<li>Hierarchy of staff persons with realistic names (german) and organisations</li>
+<li>Application users linked to created persons/organisations</li>
+<li>Courses with renewal hierarchy, participation workflow simulation</li>
+<li>Input fields for sample inquiry forms, eCRFs and custom subject list data</li>
+<li>Example <em>sketch</em> input fields: VAS (visual analogue scale), DAS-28 (disease activity score) joint selector</li>
+<li>Subjects with realistic names (german) and gender/age distribution, data entry for a diabetology sample inquiry form</li>
+<li>Trials: visit schedule, staff duties, inquiry forms, subject groups, subject selection and enrollment workflow simulation, custom subject list data</li>
+<li>eCRF with series sections and basic form scripting examples (multivariate edit checks/calculations)</li>
+<li>Volume test of empty .pdf documents, stored per inventory items, persons, organisations ...</li>
+<li>Basic queries without any filter criteria to list all created users, inventory items, persons, organisations ...</li>
+</ul>
+<p>You can log in with any of the generated application users (the random username equals its password) and will see the perspective of that user.</p>
