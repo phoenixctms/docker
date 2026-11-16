@@ -1,5 +1,6 @@
 .env
 *.log
 .DS_Store
-_vm_probe*.sh
+_vm_*.sh
+_wp_*
 *.bak

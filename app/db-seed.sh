@@ -9,9 +9,12 @@ set -euo pipefail
 : "${DEFAULT_LOCALE:=en}"
 : "${SEED_DEMO_DATA:=false}"
 : "${PUBLIC_URL:=http://localhost:8888}"
+: "${APP_HTTP:=http://app:8080}"
 
 MARKER=/ctsms/external_files/.phoenix_seeded
 CRED_FILE=/credentials/login.txt
+
+export PGPASSWORD="$DBPASS"
 
 /usr/local/bin/set-properties.sh
 
@@ -26,29 +29,60 @@ if [ ! -d "$CATALINA_BASE/webapps/ROOT/WEB-INF/lib" ]; then
   jar xf ../ROOT.war
 fi
 
-if [ -f "$MARKER" ]; then
-  echo "Seed already completed previously."
+phoenix_user_exists() {
+  local count
+  count="$(psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" -Atc \
+    "SELECT COUNT(*) FROM users WHERE name = 'phoenix';" 2>/dev/null || echo 0)"
+  [ "${count:-0}" != "0" ]
+}
+
+print_credentials_if_present() {
   if [ -f "$CRED_FILE" ]; then
     cat "$CRED_FILE"
+  else
+    echo "Seed already completed (phoenix user present)."
+    echo "URL: ${PUBLIC_URL}"
+    echo "Username: phoenix"
+    echo "Password: (see credentials volume /credentials/login.txt from the original seed)"
   fi
+}
+
+if [ -f "$MARKER" ] || phoenix_user_exists; then
+  echo "Seed already completed previously."
+  print_credentials_if_present
   exit 0
 fi
 
 echo "Waiting for application HTTP..."
 for i in $(seq 1 90); do
-  if curl -fsS "http://app:8080/" >/dev/null 2>&1; then
+  if curl -fsS "${APP_HTTP}/" >/dev/null 2>&1; then
     break
   fi
   sleep 5
 done
-curl -fsS "http://app:8080/" >/dev/null
+curl -fsS "${APP_HTTP}/" >/dev/null
 
 run_dbtool() {
   /ctsms/dbtool.sh "$@"
 }
 
+clear_app_caches() {
+  echo "Clearing application caches on app..."
+  curl -fsS -X POST "${APP_HTTP}/rest/tools/clearresourcebundlecache" >/dev/null || true
+  curl -fsS -X POST "${APP_HTTP}/rest/tools/clearhibernatecache" >/dev/null || true
+  curl -fsS -X POST "${APP_HTTP}/rest/tools/cleanjavaclasses" >/dev/null || true
+}
+
 echo "Loading master data via dbtool..."
-run_dbtool -i -f
+# Skip forced re-init when production tables were already populated (partial re-run).
+CRITERION_COUNT="$(psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" -Atc \
+  "SELECT COUNT(*) FROM criterion_restriction;" 2>/dev/null || echo 0)"
+if [ "${CRITERION_COUNT:-0}" = "0" ]; then
+  run_dbtool -i -f
+else
+  echo "Production init rows already present; skipping dbtool -i -f."
+fi
+
 run_dbtool -icp /ctsms/master_data/criterion_property_definitions.csv
 run_dbtool -ipd /ctsms/master_data/permission_definitions.csv
 run_dbtool -imi /ctsms/master_data/mime.types -e ISO-8859-1
@@ -78,9 +112,19 @@ run_dbtool -ios /ctsms/master_data/ops2012syst_claml_20111103.xml -sl de
 run_dbtool -ioc /ctsms/master_data/ops2011alpha_edv_ascii_20111031.txt -osr ops2012syst_claml_20111103
 run_dbtool -ia /ctsms/master_data/asp_register_20240316.xls -e Cp1252
 
-DEPARTMENT_PASSWORD="$(tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 32)"
-USER_PASSWORD="$(tr -dc 'a-z' </dev/urandom | head -c 3)"
-CRON_PASSWORD="$(tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 8)"
+# tr gets SIGPIPE when head exits; that status is expected under pipefail.
+rand_string() {
+  local charset="$1" len="$2" out
+  out="$(LC_ALL=C tr -dc "$charset" </dev/urandom | head -c "$len" || true)"
+  if [ "${#out}" -ne "$len" ]; then
+    echo "failed to generate ${len}-character random string" >&2
+    exit 1
+  fi
+  printf '%s' "$out"
+}
+DEPARTMENT_PASSWORD="$(rand_string 'a-zA-Z0-9' 32)"
+USER_PASSWORD="$(rand_string 'a-zA-Z0-9' 16)"
+CRON_PASSWORD="$(rand_string 'a-zA-Z0-9' 16)"
 
 run_dbtool -cd -dlk my_department -dp "$DEPARTMENT_PASSWORD"
 run_dbtool -cu -dlk my_department -dp "$DEPARTMENT_PASSWORD" -u "phoenix" -p "$USER_PASSWORD" \
@@ -100,6 +144,8 @@ if [ "$SEED_DEMO_DATA" = "true" ] || [ "$SEED_DEMO_DATA" = "1" ]; then
   echo "Loading demo data..."
   run_dbtool --load_demo_data || run_dbtool -ldd -f || true
 fi
+
+clear_app_caches
 
 mkdir -p "$(dirname "$CRED_FILE")" "$(dirname "$MARKER")"
 {

@@ -52,6 +52,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push app image
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: ./app
@@ -64,6 +65,9 @@ jobs:
             MASTER_DATA_TAG=master
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+    outputs:
+      image_digest: ${{ steps.build.outputs.digest }}
 
   build-bulk:
     runs-on: ubuntu-latest
@@ -90,6 +94,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
+            type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push bulk image
@@ -121,7 +126,7 @@ jobs:
 
       - name: Compose smoke (pull + up + seed)
         env:
-          PHOENIX_IMAGE: ${{ env.APP_IMAGE }}:latest
+          PHOENIX_IMAGE: ${{ env.APP_IMAGE }}@${{ needs.build-app.outputs.image_digest }}
         run: |
           set -euo pipefail
           docker compose pull db redis

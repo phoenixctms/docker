@@ -27,12 +27,12 @@ if [ "$EXISTS" != "0" ]; then
   exit 0
 fi
 
-echo "Applying schema-create.sql..."
-psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" -v ON_ERROR_STOP=1 -f /ctsms/db/schema-create.sql
-echo "Applying index-create.sql..."
-psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" -v ON_ERROR_STOP=1 -f /ctsms/db/index-create.sql
-echo "Applying schema-set-version.sql..."
-psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" -v ON_ERROR_STOP=1 -f /ctsms/db/schema-set-version.sql
+echo "Applying schema-create.sql, index-create.sql, schema-set-version.sql in one transaction..."
+psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" \
+  -v ON_ERROR_STOP=1 --single-transaction \
+  -f /ctsms/db/schema-create.sql \
+  -f /ctsms/db/index-create.sql \
+  -f /ctsms/db/schema-set-version.sql
 
 # Optional SQL from config-default install/sql
 if [ -d /ctsms/install/sql ]; then

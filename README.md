@@ -19,7 +19,7 @@ For production single-host Debian installs, keep using [`phoenixctms/install-deb
 
 - Docker Engine or Docker Desktop (Windows/macOS/Linux)
 - About 6–8 GB RAM recommended
-- Port `8888` free (override with `PHOENIX_HTTP_PORT`)
+- Port `8888` free on localhost (override with `PHOENIX_HTTP_PORT`; bind address with `PHOENIX_BIND_ADDRESS`)
 
 ## Quick start (prebuilt images)
 
@@ -42,11 +42,13 @@ Password: ...
 
 Open http://localhost:8888 and log in. Credentials are also stored in the `credentials` volume (`/credentials/login.txt` inside `db-seed` / `app`).
 
-Optional demo data:
+Optional demo data (set on **first** start; enabling it later does not re-import because seed runs once per data volumes):
 
 ```bash
 SEED_DEMO_DATA=true docker compose up -d
 ```
+
+To reseed from scratch after changing seed options: `docker compose down -v` then `up` again.
 
 ## Build locally
 
@@ -90,9 +92,10 @@ See [`.env.example`](.env.example). Important ones:
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `PHOENIX_HTTP_PORT` | `8888` | Host port for the UI |
+| `PHOENIX_BIND_ADDRESS` | `127.0.0.1` | Host interface published for the UI (`0.0.0.0` for LAN access) |
 | `POSTGRES_PASSWORD` | `ctsms` | DB password |
 | `JAVA_XMX` | `1536m` | Tomcat heap |
-| `SEED_DEMO_DATA` | `false` | Load demo dataset during seed |
+| `SEED_DEMO_DATA` | `false` | Load demo dataset on first seed only |
 | `PUBLIC_URL` | `http://localhost:8888` | Printed login URL |
 | `PHOENIX_IMAGE` | `phoenixctms/app:latest` | Override image (e.g. GHCR) |
 
@@ -100,7 +103,7 @@ See [`.env.example`](.env.example). Important ones:
 
 - The WAR is built in a multi-stage Dockerfile (JDK 21 + Maven), migrated with jakartaee-migration for Tomcat 10, then copied into the runtime image. End users do **not** run Maven.
 - Schema SQL is generated at image build time and applied by `db-migrate` on first start.
-- Master-data load and user creation run once in `db-seed` (marker file under `/ctsms/external_files`).
+- Master-data load and user creation run once in `db-seed` (skips when the `phoenix` user or seed marker is already present).
 - Redis is not required by the Java UI today; it is present for bulk-processor / Signup.
 
 ## License

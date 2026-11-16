@@ -5,6 +5,8 @@ FROM perl:5.40-threaded
 
 ARG BULK_TAG
 ENV DEBIAN_FRONTEND=noninteractive
+# Official perl image uses /usr/local/bin/perl; apt lib*-perl packages land in /usr/share/perl5.
+ENV PERL5LIB=/usr/share/perl5
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libarchive-zip-perl \
