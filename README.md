@@ -9,9 +9,9 @@ This replaces the older Tomcat 8 / Postgres 12 evaluation compose with a current
 | `db` | PostgreSQL 17 |
 | `redis` | Redis 7 (for optional bulk-processor) |
 | `db-migrate` | Applies schema once |
-| `app` | Tomcat 10 + prebuilt Phoenix WAR |
+| `app` | Tomcat 10 + prebuilt Phoenix WAR + Perl bulk-processor (UI jobs) |
 | `db-seed` | Loads master data and creates the `phoenix` login |
-| `bulk` | Optional Perl bulk-processor (`--profile bulk`) |
+| `bulk` | Optional Signup/worker sidecar (`--profile bulk`) |
 
 For production single-host Debian installs, keep using [`phoenixctms/install-debian`](https://github.com/phoenixctms/install-debian) / the OVA.
 
@@ -61,7 +61,7 @@ docker compose logs -f db-seed
 Build args (optional):
 
 ```bash
-CTSMS_TAG=master CONFIG_TAG=master MASTER_DATA_TAG=master docker compose build
+CTSMS_TAG=master CONFIG_TAG=master MASTER_DATA_TAG=master BULK_TAG=master docker compose build
 ```
 
 ## Useful commands
@@ -77,13 +77,17 @@ docker compose down
 docker compose down -v
 ```
 
-## Optional bulk-processor
+## Perl jobs (ECRF export, etc.)
+
+UI/JobService Perl jobs run **inside the `app` container** (same as install-debian): `/ctsms/bulk_processor/...`. No extra Compose profile is required for that.
+
+## Optional Signup / worker sidecar
 
 ```bash
 docker compose --profile bulk up -d
 ```
 
-The Perl environment is included; wiring Signup/ETL REST passwords against the seeded cron user is still evolving — treat this profile as experimental.
+Long-running Signup/ETL workers in a separate container; REST password wiring against the seeded cron user is still evolving — treat this profile as experimental.
 
 ## Environment variables
 
@@ -104,7 +108,8 @@ See [`.env.example`](.env.example). Important ones:
 - The WAR is built in a multi-stage Dockerfile (JDK 21 + Maven), migrated with jakartaee-migration for Tomcat 10, then copied into the runtime image. End users do **not** run Maven.
 - Schema SQL is generated at image build time and applied by `db-migrate` on first start.
 - Master-data load and user creation run once in `db-seed` (skips when the `phoenix` user or seed marker is already present).
-- Redis is not required by the Java UI today; it is present for bulk-processor / Signup.
+- Perl bulk-processor is installed in the `app` image so JobService can exec `process.pl` locally.
+- Redis is not required by the Java UI today; it is present for the optional Signup/worker profile.
 
 ## License
 

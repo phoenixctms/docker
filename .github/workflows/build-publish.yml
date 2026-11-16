@@ -63,6 +63,7 @@ jobs:
             CTSMS_TAG=${{ github.event.inputs.ctsms_tag || 'master' }}
             CONFIG_TAG=master
             MASTER_DATA_TAG=master
+            BULK_TAG=master
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

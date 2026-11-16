@@ -3,6 +3,7 @@
 ARG CTSMS_TAG=master
 ARG CONFIG_TAG=master
 ARG MASTER_DATA_TAG=master
+ARG BULK_TAG=master
 
 ############################
 # Build WAR + schema SQL
@@ -60,6 +61,7 @@ FROM tomcat:10.1-jdk21-temurin
 
 ARG CONFIG_TAG
 ARG MASTER_DATA_TAG
+ARG BULK_TAG
 ENV DEBIAN_FRONTEND=noninteractive \
     CTSMS_PROPERTIES=/ctsms/properties \
     CTSMS_JAVA=/ctsms/java \
@@ -67,12 +69,82 @@ ENV DEBIAN_FRONTEND=noninteractive \
     CATALINA_BASE=/usr/local/tomcat
 
 USER root
+# JobService runs perl ETL scripts in this container (same layout as install-debian).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       curl ca-certificates postgresql-client bash coreutils \
+      perl \
+      libarchive-zip-perl \
+      libconfig-any-perl \
+      libdata-dump-perl \
+      libdata-dumper-concise-perl \
+      libdata-uuid-perl \
+      libdata-validate-ip-perl \
+      libdate-calc-perl \
+      libdate-manip-perl \
+      libdatetime-format-iso8601-perl \
+      libdatetime-format-strptime-perl \
+      libdatetime-perl \
+      libdatetime-timezone-perl \
+      libdbd-csv-perl \
+      libdbd-mysql-perl \
+      libdbd-sqlite3-perl \
+      libdbd-pg-perl \
+      libdigest-md5-perl \
+      libemail-mime-attachment-stripper-perl \
+      libemail-mime-perl \
+      libgearman-client-perl \
+      libhtml-parser-perl \
+      libintl-perl \
+      libio-compress-perl \
+      libio-socket-ssl-perl \
+      libjson-xs-perl \
+      libjson-perl \
+      liblog-log4perl-perl \
+      libmail-imapclient-perl \
+      libmarpa-r2-perl \
+      libmime-lite-perl \
+      libmime-tools-perl \
+      libnet-address-ip-local-perl \
+      libnet-smtp-ssl-perl \
+      libole-storage-lite-perl \
+      libphp-serialization-perl \
+      libexcel-writer-xlsx-perl \
+      libspreadsheet-parseexcel-perl \
+      libstring-mkpasswd-perl \
+      libtext-csv-xs-perl \
+      libtie-ixhash-perl \
+      libtime-warp-perl \
+      liburi-find-perl \
+      libuuid-perl \
+      libwww-perl \
+      libxml-dumper-perl \
+      libxml-libxml-perl \
+      libyaml-libyaml-perl \
+      libyaml-tiny-perl \
+      libtemplate-perl \
+      libdancer-perl \
+      libplack-perl \
+      libredis-perl \
+      libgraphviz-perl \
+      libgd-perl \
+      libsys-cpuaffinity-perl \
+      libtest-utf8-perl \
+      libmoosex-hasdefaults-perl \
+      gnuplot \
+      imagemagick \
+      ghostscript \
+      build-essential \
+      cpanminus \
  && rm -rf /var/lib/apt/lists/* \
+ && cpanm --notest Dancer::Plugin::I18N \
+ && cpanm --notest Dancer::Session::Redis \
+ && cpanm --notest DateTime::Format::Excel \
+ && cpanm --notest Spreadsheet::Reader::Format \
+ && cpanm --notest Spreadsheet::Reader::ExcelXML \
+ && cpanm --notest Tie::IxHash \
  && rm -rf "${CATALINA_BASE}/webapps/*" \
- && mkdir -p /ctsms/external_files /ctsms/master_data /ctsms/db /credentials
+ && mkdir -p /ctsms/external_files /ctsms/master_data /ctsms/db /credentials /ctsms/bulk_processor/output
 
 # Application WAR
 COPY --from=migrate /wars/ROOT.war ${CATALINA_BASE}/webapps/ROOT.war
@@ -85,7 +157,8 @@ COPY --from=build /src/ctsms/core/db/schema-create.sql /ctsms/db/schema-create.s
 COPY --from=build /src/ctsms/core/db/index-create.sql /ctsms/db/index-create.sql
 COPY --from=build /src/ctsms/core/db/schema-set-version.sql /ctsms/db/schema-set-version.sql
 
-# Config + master data + helper scripts
+# Config + master data + bulk-processor + helper scripts
+# Order matches install-debian: config-default first (job cfg overlays), then bulk-processor code.
 RUN curl -fsSL -o /tmp/config.tar.gz \
       "https://github.com/phoenixctms/config-default/archive/${CONFIG_TAG}.tar.gz" \
  && tar -xzf /tmp/config.tar.gz -C /ctsms --strip-components 1 \
@@ -94,14 +167,32 @@ RUN curl -fsSL -o /tmp/config.tar.gz \
       "https://api.github.com/repos/phoenixctms/master-data/tarball/${MASTER_DATA_TAG}" \
  && tar -xzf /tmp/master-data.tar.gz -C /ctsms/master_data --strip-components 1 \
  && rm -f /tmp/master-data.tar.gz \
+ && curl -fsSL -o /tmp/bulk-processor.tar.gz \
+      "https://github.com/phoenixctms/bulk-processor/archive/${BULK_TAG}.tar.gz" \
+ && tar -xzf /tmp/bulk-processor.tar.gz -C /ctsms/bulk_processor --strip-components 1 \
+ && rm -f /tmp/bulk-processor.tar.gz \
+ && perl /ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/minify.pl \
+      --folder=/ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/Signup \
+ && mkdir -p /ctsms/bulk_processor/output \
+ && chmod -R 755 /ctsms/bulk_processor \
+ && chmod -R 777 /ctsms/bulk_processor/output \
+ && test -f /ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/ETL/EcrfExporter/process.pl \
  && curl -fsSL -o /ctsms/dbtool.sh \
       https://raw.githubusercontent.com/phoenixctms/install-debian/master/dbtool.sh \
  && curl -fsSL -o /ctsms/clearcache.sh \
       https://raw.githubusercontent.com/phoenixctms/install-debian/master/clearcache.sh \
+ && curl -fsSL -o /ctsms/ecrfdataexport.sh \
+      https://raw.githubusercontent.com/phoenixctms/install-debian/master/ecrfdataexport.sh \
+ && curl -fsSL -o /ctsms/ecrfdataimport.sh \
+      https://raw.githubusercontent.com/phoenixctms/install-debian/master/ecrfdataimport.sh \
+ && curl -fsSL -o /ctsms/inquirydataexport.sh \
+      https://raw.githubusercontent.com/phoenixctms/install-debian/master/inquirydataexport.sh \
+ && curl -fsSL -o /ctsms/inquirydataimport.sh \
+      https://raw.githubusercontent.com/phoenixctms/install-debian/master/inquirydataimport.sh \
  && sed -r -i 's|-Xms[^ ]+|-Xms512m|' /ctsms/dbtool.sh \
  && sed -r -i 's|-Xmx[^ ]+|-Xmx1536m|' /ctsms/dbtool.sh \
  && sed -r -i 's|-Xss[^ ]+|-Xss256k|' /ctsms/dbtool.sh \
- && chmod 755 /ctsms/dbtool.sh /ctsms/clearcache.sh \
+ && chmod 755 /ctsms/dbtool.sh /ctsms/clearcache.sh /ctsms/ecrfdata*.sh /ctsms/inquirydata*.sh \
  && chmod 775 /ctsms /ctsms/external_files
 
 # Tomcat JVM defaults (overridable via JAVA_OPTS / entrypoint)

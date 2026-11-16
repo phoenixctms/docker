@@ -37,6 +37,7 @@ services:
         CTSMS_TAG: ${CTSMS_TAG:-master}
         CONFIG_TAG: ${CONFIG_TAG:-master}
         MASTER_DATA_TAG: ${MASTER_DATA_TAG:-master}
+        BULK_TAG: ${BULK_TAG:-master}
     depends_on:
       db:
         condition: service_healthy
@@ -57,6 +58,7 @@ services:
         CTSMS_TAG: ${CTSMS_TAG:-master}
         CONFIG_TAG: ${CONFIG_TAG:-master}
         MASTER_DATA_TAG: ${MASTER_DATA_TAG:-master}
+        BULK_TAG: ${BULK_TAG:-master}
     depends_on:
       db-migrate:
         condition: service_completed_successfully
@@ -74,6 +76,7 @@ services:
     volumes:
       - external_files:/ctsms/external_files
       - credentials:/credentials
+      - bulk_output:/ctsms/bulk_processor/output
     ports:
       - "${PHOENIX_BIND_ADDRESS:-127.0.0.1}:${PHOENIX_HTTP_PORT:-8888}:8080"
     healthcheck:
@@ -91,6 +94,7 @@ services:
         CTSMS_TAG: ${CTSMS_TAG:-master}
         CONFIG_TAG: ${CONFIG_TAG:-master}
         MASTER_DATA_TAG: ${MASTER_DATA_TAG:-master}
+        BULK_TAG: ${BULK_TAG:-master}
     depends_on:
       app:
         condition: service_healthy
@@ -109,7 +113,7 @@ services:
     entrypoint: ["/usr/local/bin/db-seed.sh"]
     restart: "no"
 
-  # Optional Perl bulk-processor / Signup worker (profile: bulk)
+  # Optional long-running Signup/worker sidecar (UI Perl jobs use bulk-processor inside `app`)
   bulk:
     profiles: ["bulk"]
     image: ${PHOENIX_BULK_IMAGE:-phoenixctms/bulk:latest}
