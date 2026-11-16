@@ -5,8 +5,9 @@ FROM perl:5.40-threaded
 
 ARG BULK_TAG
 ENV DEBIAN_FRONTEND=noninteractive
-# Official perl image uses /usr/local/bin/perl; apt lib*-perl packages land in /usr/share/perl5.
-ENV PERL5LIB=/usr/share/perl5
+# Official image perl (/usr/local/bin/perl) does not see apt lib*-perl under /usr/share/perl5.
+# Build cpanm modules WITHOUT putting apt first on PERL5LIB (that shadows cpan upgrades and
+# breaks DateTime::Format::Excel). Runtime entrypoint prepends site_perl then apt.
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libarchive-zip-perl \
@@ -77,6 +78,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/* \
  && cpanm --notest Dancer::Plugin::I18N \
  && cpanm --notest Dancer::Session::Redis \
+ && cpanm --notest DateTime::Locale \
+ && cpanm --notest DateTime \
  && cpanm --notest DateTime::Format::Excel \
  && cpanm --notest Spreadsheet::Reader::Format \
  && cpanm --notest Spreadsheet::Reader::ExcelXML \
@@ -87,7 +90,8 @@ RUN mkdir -p /ctsms/bulk_processor /ctsms/bulk_processor/output \
       "https://github.com/phoenixctms/bulk-processor/archive/${BULK_TAG}.tar.gz" \
  && tar -xzf /tmp/bulk-processor.tar.gz -C /ctsms/bulk_processor --strip-components 1 \
  && rm -f /tmp/bulk-processor.tar.gz \
- && perl /ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/minify.pl \
+ && PERL5LIB="$(perl -MConfig -e 'print join q{:}, grep { length } @Config{qw(sitearchexp sitelibexp)}'):/usr/share/perl5" \
+      perl /ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/minify.pl \
       --folder=/ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/Signup \
  && chmod -R 755 /ctsms/bulk_processor \
  && chmod -R 777 /ctsms/bulk_processor/output \
