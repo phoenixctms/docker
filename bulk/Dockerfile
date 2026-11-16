@@ -1,15 +1,14 @@
 # Optional bulk-processor / Signup worker for Compose profile "bulk"
+# Use Debian system perl so apt lib*-perl packages are on @INC (matches install-debian).
 ARG BULK_TAG=master
 
-FROM perl:5.40-threaded
+FROM debian:bookworm-slim
 
 ARG BULK_TAG
 ENV DEBIAN_FRONTEND=noninteractive
-# Official image perl (/usr/local/bin/perl) does not see apt lib*-perl under /usr/share/perl5.
-# Build cpanm modules WITHOUT putting apt first on PERL5LIB (that shadows cpan upgrades and
-# breaks DateTime::Format::Excel). Runtime entrypoint prepends site_perl then apt.
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    perl \
     libarchive-zip-perl \
     libconfig-any-perl \
     libdata-dump-perl \
@@ -39,7 +38,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     liblog-log4perl-perl \
     libmail-imapclient-perl \
     libmarpa-r2-perl \
-    libmime-base64-perl \
     libmime-lite-perl \
     libmime-tools-perl \
     libnet-address-ip-local-perl \
@@ -78,8 +76,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/* \
  && cpanm --notest Dancer::Plugin::I18N \
  && cpanm --notest Dancer::Session::Redis \
- && cpanm --notest DateTime::Locale \
- && cpanm --notest DateTime \
  && cpanm --notest DateTime::Format::Excel \
  && cpanm --notest Spreadsheet::Reader::Format \
  && cpanm --notest Spreadsheet::Reader::ExcelXML \
@@ -90,8 +86,7 @@ RUN mkdir -p /ctsms/bulk_processor /ctsms/bulk_processor/output \
       "https://github.com/phoenixctms/bulk-processor/archive/${BULK_TAG}.tar.gz" \
  && tar -xzf /tmp/bulk-processor.tar.gz -C /ctsms/bulk_processor --strip-components 1 \
  && rm -f /tmp/bulk-processor.tar.gz \
- && PERL5LIB="$(perl -MConfig -e 'print join q{:}, grep { length } @Config{qw(sitearchexp sitelibexp)}'):/usr/share/perl5" \
-      perl /ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/minify.pl \
+ && perl /ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/minify.pl \
       --folder=/ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/Signup \
  && chmod -R 755 /ctsms/bulk_processor \
  && chmod -R 777 /ctsms/bulk_processor/output \
