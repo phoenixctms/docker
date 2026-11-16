@@ -73,6 +73,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cpanminus \
     curl \
     ca-certificates \
+    default-jre-headless \
  && rm -rf /var/lib/apt/lists/* \
  && cpanm --notest Dancer::Plugin::I18N \
  && cpanm --notest Dancer::Session::Redis \
