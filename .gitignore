@@ -1,1 +1,6 @@
+.env
+*.log
+.DS_Store
+_vm_*.sh
+_wp_*
 *.bak
