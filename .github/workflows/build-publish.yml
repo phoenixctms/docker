@@ -135,16 +135,16 @@ jobs:
           docker compose up -d db redis
           docker compose up -d --no-build db-migrate
           docker compose up -d --no-build app
-          docker compose up -d --no-build db-seed
+          docker compose up -d --no-build db-init
           for i in $(seq 1 90); do
-            if docker compose logs db-seed 2>/dev/null | grep -q 'Username: phoenix'; then
+            if docker compose logs db-init 2>/dev/null | grep -q 'Username: phoenix'; then
               break
             fi
-            echo "waiting for seed... ($i)"
+            echo "waiting for init... ($i)"
             sleep 10
           done
-          docker compose logs db-seed | tee /tmp/seed.log
-          grep -q 'Username: phoenix' /tmp/seed.log
+          docker compose logs db-init | tee /tmp/init.log
+          grep -q 'Username: phoenix' /tmp/init.log
           code=$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8888/ || true)
           echo "HTTP $code"
           echo "$code" | grep -Eq '200|302|401|403'

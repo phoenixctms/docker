@@ -1,6 +1,6 @@
 # Phoenix CTMS evaluation stack
 # Usage: docker compose up -d
-# Then: docker compose logs -f db-seed   # prints login credentials
+# Then: docker compose logs -f db-init   # prints login credentials
 
 name: phoenixctms
 
@@ -86,7 +86,7 @@ services:
       retries: 40
       start_period: 120s
 
-  db-seed:
+  db-init:
     image: ${PHOENIX_IMAGE:-phoenixctms/app:latest}
     build:
       context: ./app
@@ -110,7 +110,7 @@ services:
     volumes:
       - external_files:/ctsms/external_files
       - credentials:/credentials
-    entrypoint: ["/usr/local/bin/db-seed.sh"]
+    entrypoint: ["/usr/local/bin/db-init.sh"]
     restart: "no"
 
   # Optional long-running Signup/worker sidecar (UI Perl jobs use bulk-processor inside `app`)

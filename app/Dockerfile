@@ -200,7 +200,7 @@ ENV JAVA_OPTS="-server -Djava.awt.headless=true --add-opens=java.base/java.lang=
 
 COPY set-properties.sh /usr/local/bin/set-properties.sh
 COPY db-migrate.sh /usr/local/bin/db-migrate.sh
-COPY db-seed.sh /usr/local/bin/db-seed.sh
+COPY db-init.sh /usr/local/bin/db-init.sh
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 755 /usr/local/bin/*.sh
 

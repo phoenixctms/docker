@@ -10,7 +10,7 @@ This replaces the older Tomcat 8 / Postgres 12 evaluation compose with a current
 | `redis` | Redis 7 (for optional bulk-processor) |
 | `db-migrate` | Applies schema once |
 | `app` | Tomcat 10 + prebuilt Phoenix WAR + Perl bulk-processor (UI jobs) |
-| `db-seed` | Loads master data and creates the `phoenix` login |
+| `db-init` | Loads master data and creates the `phoenix` login |
 | `bulk` | Optional Signup/worker sidecar (`--profile bulk`) |
 
 For production single-host Debian installs, keep using [`phoenixctms/install-debian`](https://github.com/phoenixctms/install-debian) / the OVA.
@@ -29,10 +29,10 @@ Once images are published to GHCR:
 export PHOENIX_IMAGE=ghcr.io/phoenixctms/phoenixctms-app:latest
 docker compose pull
 docker compose up -d
-docker compose logs -f db-seed
+docker compose logs -f db-init
 ```
 
-When seed finishes it prints:
+When init finishes it prints:
 
 ```text
 URL: http://localhost:8888
@@ -40,22 +40,22 @@ Username: phoenix
 Password: ...
 ```
 
-Open http://localhost:8888 and log in. Credentials are also stored in the `credentials` volume (`/credentials/login.txt` inside `db-seed` / `app`).
+Open http://localhost:8888 and log in. Credentials are also stored in the `credentials` volume (`/credentials/login.txt` inside `db-init` / `app`).
 
-Optional demo data (set on **first** start; enabling it later does not re-import because seed runs once per data volumes):
+Optional demo data (set on **first** start; enabling it later does not re-import because init runs once per data volumes):
 
 ```bash
 SEED_DEMO_DATA=true docker compose up -d
 ```
 
-To reseed from scratch after changing seed options: `docker compose down -v` then `up` again.
+To re-init from scratch after changing init options: `docker compose down -v` then `up` again.
 
 ## Build locally
 
 ```bash
 docker compose build
 docker compose up -d
-docker compose logs -f db-seed
+docker compose logs -f db-init
 ```
 
 Build args (optional):
@@ -99,7 +99,7 @@ See [`.env.example`](.env.example). Important ones:
 | `PHOENIX_BIND_ADDRESS` | `127.0.0.1` | Host interface published for the UI (`0.0.0.0` for LAN access) |
 | `POSTGRES_PASSWORD` | `ctsms` | DB password |
 | `JAVA_XMX` | `1536m` | Tomcat heap |
-| `SEED_DEMO_DATA` | `false` | Load demo dataset on first seed only |
+| `SEED_DEMO_DATA` | `false` | Load demo dataset on first init only |
 | `PUBLIC_URL` | `http://localhost:8888` | Printed login URL |
 | `PHOENIX_IMAGE` | `phoenixctms/app:latest` | Override image (e.g. GHCR) |
 
@@ -107,7 +107,7 @@ See [`.env.example`](.env.example). Important ones:
 
 - The WAR is built in a multi-stage Dockerfile (JDK 21 + Maven), migrated with jakartaee-migration for Tomcat 10, then copied into the runtime image. End users do **not** run Maven.
 - Schema SQL is generated at image build time and applied by `db-migrate` on first start.
-- Master-data load and user creation run once in `db-seed` (skips when the `phoenix` user or seed marker is already present).
+- Master-data load and user creation run once in `db-init` (skips when the `phoenix` user or init marker is already present).
 - Perl bulk-processor is installed in the `app` image so JobService can exec `process.pl` locally.
 - Redis is not required by the Java UI today; it is present for the optional Signup/worker profile.
 
