@@ -1,0 +1,143 @@
+# Phoenix CTMS evaluation stack
+# Usage: docker compose up -d
+# Then: docker compose logs -f db-seed   # prints login credentials
+
+name: phoenixctms
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ctsms}
+      POSTGRES_USER: ${POSTGRES_USER:-ctsms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctsms}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Tuning used by install.sh
+    command: ["postgres", "-c", "join_collapse_limit=1"]
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  db-migrate:
+    image: ${PHOENIX_IMAGE:-phoenixctms/app:latest}
+    build:
+      context: ./app
+      args:
+        CTSMS_TAG: ${CTSMS_TAG:-master}
+        CONFIG_TAG: ${CONFIG_TAG:-master}
+        MASTER_DATA_TAG: ${MASTER_DATA_TAG:-master}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DBSERVER: db
+      DBPORT: 5432
+      DBUSER: ${POSTGRES_USER:-ctsms}
+      DBPASS: ${POSTGRES_PASSWORD:-ctsms}
+      DBNAME: ${POSTGRES_DB:-ctsms}
+    entrypoint: ["/usr/local/bin/db-migrate.sh"]
+    restart: "no"
+
+  app:
+    image: ${PHOENIX_IMAGE:-phoenixctms/app:latest}
+    build:
+      context: ./app
+      args:
+        CTSMS_TAG: ${CTSMS_TAG:-master}
+        CONFIG_TAG: ${CONFIG_TAG:-master}
+        MASTER_DATA_TAG: ${MASTER_DATA_TAG:-master}
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    environment:
+      DBSERVER: db
+      DBPORT: 5432
+      DBUSER: ${POSTGRES_USER:-ctsms}
+      DBPASS: ${POSTGRES_PASSWORD:-ctsms}
+      DBNAME: ${POSTGRES_DB:-ctsms}
+      DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
+      JAVA_XMS: ${JAVA_XMS:-512m}
+      JAVA_XMX: ${JAVA_XMX:-1536m}
+    volumes:
+      - external_files:/ctsms/external_files
+      - credentials:/credentials
+    ports:
+      - "${PHOENIX_HTTP_PORT:-8888}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/ | head -c 1 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 120s
+
+  db-seed:
+    image: ${PHOENIX_IMAGE:-phoenixctms/app:latest}
+    build:
+      context: ./app
+      args:
+        CTSMS_TAG: ${CTSMS_TAG:-master}
+        CONFIG_TAG: ${CONFIG_TAG:-master}
+        MASTER_DATA_TAG: ${MASTER_DATA_TAG:-master}
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      DBSERVER: db
+      DBPORT: 5432
+      DBUSER: ${POSTGRES_USER:-ctsms}
+      DBPASS: ${POSTGRES_PASSWORD:-ctsms}
+      DBNAME: ${POSTGRES_DB:-ctsms}
+      DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8888}
+    volumes:
+      - external_files:/ctsms/external_files
+      - credentials:/credentials
+    entrypoint: ["/usr/local/bin/db-seed.sh"]
+    restart: "no"
+
+  # Optional Perl bulk-processor / Signup worker (profile: bulk)
+  bulk:
+    profiles: ["bulk"]
+    image: ${PHOENIX_BULK_IMAGE:-phoenixctms/bulk:latest}
+    build:
+      context: ./bulk
+      args:
+        BULK_TAG: ${BULK_TAG:-master}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    environment:
+      DBSERVER: db
+      DBPORT: 5432
+      DBUSER: ${POSTGRES_USER:-ctsms}
+      DBPASS: ${POSTGRES_PASSWORD:-ctsms}
+      DBNAME: ${POSTGRES_DB:-ctsms}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - external_files:/ctsms/external_files
+      - bulk_output:/ctsms/bulk_processor/output
+
+volumes:
+  postgres_data:
+  external_files:
+  credentials:
+  bulk_output:
