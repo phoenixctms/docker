@@ -22,6 +22,7 @@ services:
     command: ["postgres", "-c", "join_collapse_limit=1"]
 
   redis:
+    profiles: ["signup"]
     image: redis:7-alpine
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -30,7 +31,7 @@ services:
       retries: 10
 
   db-migrate:
-    image: ${PHOENIX_IMAGE:-phoenixctms/app:latest}
+    image: ${PHOENIX_IMAGE:-phoenixctms/ctsms:latest}
     build:
       context: ./app
       args:
@@ -50,8 +51,9 @@ services:
     entrypoint: ["/usr/local/bin/db-migrate.sh"]
     restart: "no"
 
-  app:
-    image: ${PHOENIX_IMAGE:-phoenixctms/app:latest}
+  ctsms:
+    container_name: ctsms
+    image: ${PHOENIX_IMAGE:-phoenixctms/ctsms:latest}
     build:
       context: ./app
       args:
@@ -62,8 +64,6 @@ services:
     depends_on:
       db-migrate:
         condition: service_completed_successfully
-      redis:
-        condition: service_healthy
     environment:
       DBSERVER: db
       DBPORT: 5432
@@ -87,7 +87,7 @@ services:
       start_period: 120s
 
   db-init:
-    image: ${PHOENIX_IMAGE:-phoenixctms/app:latest}
+    image: ${PHOENIX_IMAGE:-phoenixctms/ctsms:latest}
     build:
       context: ./app
       args:
@@ -96,7 +96,7 @@ services:
         MASTER_DATA_TAG: ${MASTER_DATA_TAG:-master}
         BULK_TAG: ${BULK_TAG:-master}
     depends_on:
-      app:
+      ctsms:
         condition: service_healthy
     environment:
       DBSERVER: db
@@ -113,7 +113,7 @@ services:
     entrypoint: ["/usr/local/bin/db-init.sh"]
     restart: "no"
 
-  # Optional Signup Dancer app (UI Perl jobs use bulk-processor inside `app`)
+  # Optional Signup Dancer app (UI Perl jobs use bulk-processor inside `ctsms`)
   signup:
     profiles: ["signup"]
     image: ${PHOENIX_SIGNUP_IMAGE:-phoenixctms/signup:latest}
@@ -135,7 +135,7 @@ services:
       DBNAME: ${POSTGRES_DB:-ctsms}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      APP_HTTP: http://app:8080
+      APP_HTTP: http://ctsms:8080
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8888}
     volumes:
       - external_files:/ctsms/external_files

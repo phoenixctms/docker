@@ -19,8 +19,8 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  APP_IMAGE: ghcr.io/${{ github.repository_owner }}/phoenixctms-app
-  SIGNUP_IMAGE: ghcr.io/${{ github.repository_owner }}/phoenixctms-signup
+  APP_IMAGE: ghcr.io/${{ github.repository_owner }}/ctsms
+  SIGNUP_IMAGE: ghcr.io/${{ github.repository_owner }}/signup
 
 jobs:
   build-app:
@@ -131,11 +131,11 @@ jobs:
           PHOENIX_IMAGE: ${{ env.APP_IMAGE }}@${{ needs.build-app.outputs.image_digest }}
         run: |
           set -euo pipefail
-          docker compose pull db redis
+          docker compose pull db
           docker pull "$PHOENIX_IMAGE"
-          docker compose up -d db redis
+          docker compose up -d db
           docker compose up -d --no-build db-migrate
-          docker compose up -d --no-build app
+          docker compose up -d --no-build ctsms
           docker compose up -d --no-build db-init
           for i in $(seq 1 90); do
             if docker compose logs db-init 2>/dev/null | grep -q 'Username: phoenix'; then

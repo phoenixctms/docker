@@ -9,7 +9,7 @@ set -euo pipefail
 : "${DEFAULT_LOCALE:=en}"
 : "${SEED_DEMO_DATA:=false}"
 : "${PUBLIC_URL:=http://localhost:8888}"
-: "${APP_HTTP:=http://app:8080}"
+: "${APP_HTTP:=http://ctsms:8080}"
 
 MARKER=/ctsms/external_files/.phoenix_seeded
 CRED_FILE=/credentials/login.txt

@@ -8,7 +8,7 @@ set -euo pipefail
 : "${DBPASS:=ctsms}"
 : "${REDIS_HOST:=redis}"
 : "${REDIS_PORT:=6379}"
-: "${APP_HTTP:=http://app:8080}"
+: "${APP_HTTP:=http://ctsms:8080}"
 : "${PUBLIC_URL:=http://localhost:8888}"
 
 APP_HTTP="${APP_HTTP%/}"

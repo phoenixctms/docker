@@ -7,9 +7,9 @@ This replaces the older Tomcat 8 / Postgres 12 evaluation compose with a current
 | Service | Image / role |
 |---------|----------------|
 | `db` | PostgreSQL 17 |
-| `redis` | Redis 7 (Signup sessions) |
+| `redis` | Redis 7, Signup sessions only (`--profile signup`) |
 | `db-migrate` | Applies schema once |
-| `app` | Tomcat 10 + prebuilt Phoenix WAR + Perl bulk-processor (UI jobs) |
+| `ctsms` | Tomcat 10 + prebuilt Phoenix WAR + Perl bulk-processor (UI jobs). Container name `ctsms` |
 | `db-init` | Loads master data and creates the `phoenix` login |
 | `signup` | Optional Signup Dancer app (`--profile signup`) |
 
@@ -27,7 +27,7 @@ For production single-host Debian installs, keep using [`phoenixctms/install-deb
 Once images are published to GHCR:
 
 ```bash
-export PHOENIX_IMAGE=ghcr.io/phoenixctms/phoenixctms-app:latest
+export PHOENIX_IMAGE=ghcr.io/phoenixctms/ctsms:latest
 docker compose pull
 docker compose up -d
 docker compose logs -f db-init
@@ -41,7 +41,7 @@ Username: phoenix
 Password: ...
 ```
 
-Open http://localhost:8888 and log in. Credentials are also stored in the `credentials` volume (`/credentials/login.txt` inside `db-init` / `app`).
+Open http://localhost:8888 and log in. Credentials are also stored in the `credentials` volume (`/credentials/login.txt` inside `db-init` / `ctsms`).
 
 Optional demo data (set on **first** start; enabling it later does not re-import because init runs once per data volumes):
 
@@ -68,8 +68,8 @@ CTSMS_TAG=master CONFIG_TAG=master MASTER_DATA_TAG=master BULK_TAG=master docker
 ## Useful commands
 
 ```bash
-# Follow app logs
-docker compose logs -f app
+# Follow the Java service logs
+docker compose logs -f ctsms
 
 # Stop (keep data)
 docker compose down
@@ -80,7 +80,7 @@ docker compose down -v
 
 ## Perl jobs (ECRF export, etc.)
 
-UI/JobService Perl jobs run **inside the `app` container** (same as install-debian): `/ctsms/bulk_processor/...`. No extra Compose profile is required for that.
+UI/JobService Perl jobs run **inside the `ctsms` container** (same as install-debian): `/ctsms/bulk_processor/...`. No extra Compose profile is required for that.
 
 ## Optional Signup
 
@@ -107,16 +107,16 @@ See [`.env.example`](.env.example). Important ones:
 | `SEED_DEMO_DATA` | `false` | Load demo dataset on first init only |
 | `PUBLIC_URL` | `http://localhost:8888` | Printed login URL and Signup link back to the UI |
 | `SIGNUP_HTTP_PORT` | `3000` | Host port for Signup (`--profile signup`) |
-| `PHOENIX_IMAGE` | `phoenixctms/app:latest` | Override app image (e.g. GHCR) |
-| `PHOENIX_SIGNUP_IMAGE` | `phoenixctms/signup:latest` | Override Signup image (e.g. GHCR) |
+| `PHOENIX_IMAGE` | `phoenixctms/ctsms:latest` | Override the Java image (e.g. GHCR) |
+| `PHOENIX_SIGNUP_IMAGE` | `phoenixctms/signup:latest` | Override the Signup image (e.g. GHCR) |
 
 ## Architecture notes
 
 - The WAR is built in a multi-stage Dockerfile (JDK 21 + Maven), migrated with jakartaee-migration for Tomcat 10, then copied into the runtime image. End users do **not** run Maven.
 - Schema SQL is generated at image build time and applied by `db-migrate` on first start.
 - Master-data load and user creation run once in `db-init` (skips when the `phoenix` user or init marker is already present). A later start still creates any missing `my_department_signup_{en,de,es}` user.
-- Perl bulk-processor is installed in the `app` image so JobService can exec `process.pl` locally.
-- Redis is not required by the Java UI today. The `signup` profile uses it for Dancer sessions.
+- Perl bulk-processor is installed in the `ctsms` image so JobService can exec `process.pl` locally.
+- Redis starts only with `--profile signup`. The Java service does not connect to it. Signup uses it for Dancer sessions.
 
 ## License
 
