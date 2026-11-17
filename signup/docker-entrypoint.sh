@@ -3,10 +3,10 @@ set -euo pipefail
 
 : "${PHOENIX_REDIS_HOST:=redis}"
 : "${PHOENIX_REDIS_PORT:=6379}"
-: "${PHOENIX_APP_HTTP:=http://ctsms:8080}"
+: "${PHOENIX_CTSMS_HTTP:=http://ctsms:8080}"
 : "${PHOENIX_PUBLIC_URL:=http://localhost:8888}"
 
-PHOENIX_APP_HTTP="${PHOENIX_APP_HTTP%/}"
+PHOENIX_CTSMS_HTTP="${PHOENIX_CTSMS_HTTP%/}"
 SIGNUP_DIR=/ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/Signup
 CFG="${SIGNUP_DIR}/config.cfg"
 PROD="${SIGNUP_DIR}/production.yml"
@@ -34,7 +34,7 @@ set_cfg() {
   fi
 }
 
-set_cfg ctsmsrestapi_uri "${PHOENIX_APP_HTTP}/rest"
+set_cfg ctsmsrestapi_uri "${PHOENIX_CTSMS_HTTP}/rest"
 set_cfg ctsmsrestapi_username "my_department_cron"
 set_cfg ctsmsrestapi_realm "api"
 set_cfg screenloglevel "INFO"
@@ -66,5 +66,5 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "$SETTINGS" > "$tmp"
 mv "$tmp" "$SETTINGS"
 
-echo "Starting Signup (REST=${PHOENIX_APP_HTTP}/rest, Redis=${PHOENIX_REDIS_HOST}:${PHOENIX_REDIS_PORT})."
+echo "Starting Signup (REST=${PHOENIX_CTSMS_HTTP}/rest, Redis=${PHOENIX_REDIS_HOST}:${PHOENIX_REDIS_PORT})."
 exec "$@"

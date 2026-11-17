@@ -35,7 +35,7 @@ services:
   db-migrate:
     image: ${PHOENIX_CTSMS_IMAGE:-phoenixctms/ctsms:latest}
     build:
-      context: ./app
+      context: ./ctsms
       args:
         CTSMS_TAG: ${PHOENIX_CTSMS_TAG:-master}
         CONFIG_TAG: ${PHOENIX_CONFIG_TAG:-master}
@@ -57,7 +57,7 @@ services:
     container_name: ctsms
     image: ${PHOENIX_CTSMS_IMAGE:-phoenixctms/ctsms:latest}
     build:
-      context: ./app
+      context: ./ctsms
       args:
         CTSMS_TAG: ${PHOENIX_CTSMS_TAG:-master}
         CONFIG_TAG: ${PHOENIX_CONFIG_TAG:-master}
@@ -91,7 +91,7 @@ services:
   db-init:
     image: ${PHOENIX_CTSMS_IMAGE:-phoenixctms/ctsms:latest}
     build:
-      context: ./app
+      context: ./ctsms
       args:
         CTSMS_TAG: ${PHOENIX_CTSMS_TAG:-master}
         CONFIG_TAG: ${PHOENIX_CONFIG_TAG:-master}
@@ -115,7 +115,7 @@ services:
       PHOENIX_OPS_DATA: ${PHOENIX_OPS_DATA:-false}
       PHOENIX_ASP_DATA: ${PHOENIX_ASP_DATA:-false}
       PHOENIX_PUBLIC_URL: ${PHOENIX_PUBLIC_URL:-http://localhost:8888}
-      PHOENIX_APP_HTTP: http://ctsms:8080
+      PHOENIX_CTSMS_HTTP: http://ctsms:8080
     volumes:
       - external_files:/ctsms/external_files
       - credentials:/credentials
@@ -139,7 +139,7 @@ services:
     environment:
       PHOENIX_REDIS_HOST: redis
       PHOENIX_REDIS_PORT: 6379
-      PHOENIX_APP_HTTP: http://ctsms:8080
+      PHOENIX_CTSMS_HTTP: http://ctsms:8080
       PHOENIX_PUBLIC_URL: ${PHOENIX_PUBLIC_URL:-http://localhost:8888}
     volumes:
       - external_files:/ctsms/external_files

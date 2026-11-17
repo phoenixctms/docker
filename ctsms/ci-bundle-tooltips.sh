@@ -41,7 +41,7 @@ docker run --rm \
   --network phoenixctms_default \
   -v phoenixctms_credentials:/credentials:ro \
   -v "${out}:/ctsms/build/ctsms/web/src/main/webapp/resources/images/tooltips" \
-  -v "${root}/app/render-tooltips.sh:/render-tooltips.sh:ro" \
+  -v "${root}/ctsms/render-tooltips.sh:/render-tooltips.sh:ro" \
   -e PHOENIX_DBSERVER=db \
   -e PHOENIX_DBPORT=5432 \
   -e PHOENIX_DBUSER="${PHOENIX_POSTGRES_USER:-ctsms}" \
@@ -57,7 +57,7 @@ test -s "${out}/trial_states_de.png"
 docker buildx build \
   --builder default \
   --load \
-  -f app/Dockerfile.tooltips \
+  -f ctsms/Dockerfile.tooltips \
   --build-arg "BASE_IMAGE=${image}" \
   -t phoenixctms-ctsms:bundled \
   "$out"

@@ -110,7 +110,7 @@ Open http://localhost:3000 (or `PHOENIX_SIGNUP_HTTP_PORT`). There is no browser 
 
 Set `PHOENIX_SIGNUP=false` and remove the `COMPOSE_PROFILES=signup` line from `.env` to leave Signup and Redis stopped. The installer keeps that line matched to `PHOENIX_SIGNUP`.
 
-Signup calls the app REST API as `my_department_signup_en`, `my_department_signup_de`, and `my_department_signup_es` (password equals the username). `config.cfg` in the container is pointed at Redis and `my_department_cron`. The cron password is the random value `db-init` writes to `/credentials/login.txt`. Signup waits until that init has finished.
+Signup calls the ctsms REST API as `my_department_signup_en`, `my_department_signup_de`, and `my_department_signup_es` (password equals the username). `config.cfg` in the container is pointed at Redis and `my_department_cron`. The cron password is the random value `db-init` writes to `/credentials/login.txt`. Signup waits until that init has finished.
 
 ## Environment variables
 

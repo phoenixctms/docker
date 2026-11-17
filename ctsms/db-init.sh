@@ -15,7 +15,7 @@ set -euo pipefail
 : "${PHOENIX_OPS_DATA:=false}"
 : "${PHOENIX_ASP_DATA:=false}"
 : "${PHOENIX_PUBLIC_URL:=http://localhost:8888}"
-: "${PHOENIX_APP_HTTP:=http://ctsms:8080}"
+: "${PHOENIX_CTSMS_HTTP:=http://ctsms:8080}"
 
 MARKER=/ctsms/external_files/.phoenix_initialized
 CRED_FILE=/credentials/login.txt
@@ -24,7 +24,7 @@ export PGPASSWORD="$PHOENIX_DBPASS"
 
 /usr/local/bin/set-properties.sh
 
-# dbtool needs exploded WAR jars from the running app container's webapps —
+# dbtool needs exploded WAR jars from the running ctsms container's webapps —
 # this init container has its own CATALINA_BASE. Point it at a local explode
 # of ROOT.war shipped in this image.
 export CATALINA_BASE=/usr/local/tomcat
@@ -111,20 +111,20 @@ if [ -f "$MARKER" ] || phoenix_user_exists; then
   exit 0
 fi
 
-echo "Waiting for application HTTP..."
+echo "Waiting for ctsms..."
 for i in $(seq 1 90); do
-  if curl -fsS "${PHOENIX_APP_HTTP}/" >/dev/null 2>&1; then
+  if curl -fsS "${PHOENIX_CTSMS_HTTP}/" >/dev/null 2>&1; then
     break
   fi
   sleep 5
 done
-curl -fsS "${PHOENIX_APP_HTTP}/" >/dev/null
+curl -fsS "${PHOENIX_CTSMS_HTTP}/" >/dev/null
 
-clear_app_caches() {
-  echo "Clearing application caches on app..."
-  curl -fsS -X POST "${PHOENIX_APP_HTTP}/rest/tools/clearresourcebundlecache" >/dev/null || true
-  curl -fsS -X POST "${PHOENIX_APP_HTTP}/rest/tools/clearhibernatecache" >/dev/null || true
-  curl -fsS -X POST "${PHOENIX_APP_HTTP}/rest/tools/cleanjavaclasses" >/dev/null || true
+clear_ctsms_caches() {
+  echo "Clearing caches on ctsms..."
+  curl -fsS -X POST "${PHOENIX_CTSMS_HTTP}/rest/tools/clearresourcebundlecache" >/dev/null || true
+  curl -fsS -X POST "${PHOENIX_CTSMS_HTTP}/rest/tools/clearhibernatecache" >/dev/null || true
+  curl -fsS -X POST "${PHOENIX_CTSMS_HTTP}/rest/tools/cleanjavaclasses" >/dev/null || true
 }
 
 echo "Loading master data via dbtool..."
@@ -229,7 +229,7 @@ if [ "$PHOENIX_DEMO_DATA" = "true" ] || [ "$PHOENIX_DEMO_DATA" = "1" ]; then
   run_dbtool --load_demo_data || run_dbtool -ldd -f || true
 fi
 
-clear_app_caches
+clear_ctsms_caches
 
 mkdir -p "$(dirname "$CRED_FILE")" "$(dirname "$MARKER")"
 {

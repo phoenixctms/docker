@@ -19,7 +19,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  APP_IMAGE: ghcr.io/${{ github.repository_owner }}/ctsms
+  CTSMS_IMAGE: ghcr.io/${{ github.repository_owner }}/ctsms
   SIGNUP_IMAGE: ghcr.io/${{ github.repository_owner }}/signup
 
 jobs:
@@ -44,7 +44,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.APP_IMAGE }}
+          images: ${{ env.CTSMS_IMAGE }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -55,7 +55,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: ./app
+          context: ./ctsms
           load: ${{ github.event_name != 'pull_request' }}
           push: false
           provenance: false
@@ -78,7 +78,7 @@ jobs:
           PHOENIX_CTSMS_IMAGE: phoenixctms-ctsms:ci
         run: |
           set -euo pipefail
-          bash app/ci-bundle-tooltips.sh
+          bash ctsms/ci-bundle-tooltips.sh
           digest=""
           while IFS= read -r tag; do
             [ -n "$tag" ] || continue
@@ -154,7 +154,7 @@ jobs:
 
       - name: Compose smoke (pull + up + init)
         env:
-          PHOENIX_CTSMS_IMAGE: ${{ env.APP_IMAGE }}@${{ needs.build-ctsms.outputs.image_digest }}
+          PHOENIX_CTSMS_IMAGE: ${{ env.CTSMS_IMAGE }}@${{ needs.build-ctsms.outputs.image_digest }}
         run: |
           set -euo pipefail
           docker compose pull db
