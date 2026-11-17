@@ -63,7 +63,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libdancer-perl \
     libplack-perl \
     libredis-perl \
-    libgraphviz-perl \
     libgd-perl \
     libsys-cpuaffinity-perl \
     libtest-utf8-perl \

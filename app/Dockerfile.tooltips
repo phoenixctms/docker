@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1.7
+# Pack tooltip PNGs produced by Render/render.sh into the already-built WAR.
+ARG BASE_IMAGE=phoenixctms-ctsms:ci
+FROM ${BASE_IMAGE}
+
+COPY *.png /tmp/tooltips/
+RUN set -eu \
+ && test -f /tmp/tooltips/trial_states.png \
+ && mkdir -p /tmp/warpack/resources/images/tooltips \
+ && cp /tmp/tooltips/*.png /tmp/warpack/resources/images/tooltips/ \
+ && cd /tmp/warpack \
+ && jar uf "${CATALINA_BASE}/webapps/ROOT.war" resources/images/tooltips \
+ && rm -rf /tmp/warpack /tmp/tooltips

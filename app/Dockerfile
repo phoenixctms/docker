@@ -126,7 +126,6 @@ RUN apt-get update \
       libdancer-perl \
       libplack-perl \
       libredis-perl \
-      libgraphviz-perl \
       libgd-perl \
       libsys-cpuaffinity-perl \
       libtest-utf8-perl \

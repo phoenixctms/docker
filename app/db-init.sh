@@ -8,10 +8,16 @@ set -euo pipefail
 : "${PHOENIX_DBPASS:=ctsms}"
 : "${PHOENIX_DEFAULT_LOCALE:=en}"
 : "${PHOENIX_DEMO_DATA:=false}"
+: "${PHOENIX_TITLE_DATA:=false}"
+: "${PHOENIX_BANK_DATA:=false}"
+: "${PHOENIX_POSTAL_DATA:=false}"
+: "${PHOENIX_ICD_DATA:=false}"
+: "${PHOENIX_OPS_DATA:=false}"
+: "${PHOENIX_ASP_DATA:=false}"
 : "${PHOENIX_PUBLIC_URL:=http://localhost:8888}"
 : "${PHOENIX_APP_HTTP:=http://ctsms:8080}"
 
-MARKER=/ctsms/external_files/.phoenix_seeded
+MARKER=/ctsms/external_files/.phoenix_initialized
 CRED_FILE=/credentials/login.txt
 
 export PGPASSWORD="$PHOENIX_DBPASS"
@@ -19,7 +25,7 @@ export PGPASSWORD="$PHOENIX_DBPASS"
 /usr/local/bin/set-properties.sh
 
 # dbtool needs exploded WAR jars from the running app container's webapps —
-# this seed container has its own CATALINA_BASE. Point it at a local explode
+# this init container has its own CATALINA_BASE. Point it at a local explode
 # of ROOT.war shipped in this image.
 export CATALINA_BASE=/usr/local/tomcat
 if [ ! -d "$CATALINA_BASE/webapps/ROOT/WEB-INF/lib" ]; then
@@ -40,10 +46,10 @@ print_credentials_if_present() {
   if [ -f "$CRED_FILE" ]; then
     cat "$CRED_FILE"
   else
-    echo "Seed already completed (phoenix user present)."
+    echo "Init already completed (phoenix user present)."
     echo "URL: ${PHOENIX_PUBLIC_URL}"
     echo "Username: phoenix"
-    echo "Password: (see credentials volume /credentials/login.txt from the original seed)"
+    echo "Password: (see credentials volume /credentials/login.txt from the original init)"
   fi
 }
 
@@ -98,7 +104,7 @@ append_signup_credentials() {
 }
 
 if [ -f "$MARKER" ] || phoenix_user_exists; then
-  echo "Seed already completed previously."
+  echo "Init already completed previously."
   print_credentials_if_present
   ensure_signup_users "$(department_passphrase_from_credentials)"
   append_signup_credentials
@@ -148,17 +154,51 @@ if /ctsms/dbtool.sh -h 2>&1 | grep -q -- '-imcc'; then
   run_dbtool -imcc /ctsms/master_data/mime.types -e ISO-8859-1 || true
 fi
 
-run_dbtool -it /ctsms/master_data/titles.csv -e ISO-8859-1
-run_dbtool -ib /ctsms/master_data/kiverzeichnis_gesamt_de_1347893202433.csv -e ISO-8859-1
-run_dbtool -ic /ctsms/master_data/countries.txt -e ISO-8859-1
-run_dbtool -iz /ctsms/master_data/streetnames.csv -e utf-8
-run_dbtool -is /ctsms/master_data/streetnames.csv -e utf-8
+if [ "$PHOENIX_TITLE_DATA" = "true" ] || [ "$PHOENIX_TITLE_DATA" = "1" ]; then
+  echo "Loading titles..."
+  run_dbtool -it /ctsms/master_data/titles.csv -e ISO-8859-1
+else
+  echo "Skipping titles (PHOENIX_TITLE_DATA is not true)."
+fi
 
-run_dbtool -iis /ctsms/master_data/icd10gm2012syst_claml_20110923.xml -sl de
-run_dbtool -iai /ctsms/master_data/icd10gm2012_alphaid_edv_ascii_20110930.txt -e ISO-8859-1 -isr icd10gm2012syst_claml_20110923
-run_dbtool -ios /ctsms/master_data/ops2012syst_claml_20111103.xml -sl de
-run_dbtool -ioc /ctsms/master_data/ops2011alpha_edv_ascii_20111031.txt -osr ops2012syst_claml_20111103
-run_dbtool -ia /ctsms/master_data/asp_register_20240316.xls -e Cp1252
+if [ "$PHOENIX_BANK_DATA" = "true" ] || [ "$PHOENIX_BANK_DATA" = "1" ]; then
+  echo "Loading bank data..."
+  run_dbtool -ib /ctsms/master_data/kiverzeichnis_gesamt_de_1347893202433.csv -e ISO-8859-1
+else
+  echo "Skipping bank data (PHOENIX_BANK_DATA is not true)."
+fi
+
+if [ "$PHOENIX_POSTAL_DATA" = "true" ] || [ "$PHOENIX_POSTAL_DATA" = "1" ]; then
+  echo "Loading postal data..."
+  run_dbtool -ic /ctsms/master_data/countries.txt -e ISO-8859-1
+  run_dbtool -iz /ctsms/master_data/streetnames.csv -e utf-8
+  run_dbtool -is /ctsms/master_data/streetnames.csv -e utf-8
+else
+  echo "Skipping postal data (PHOENIX_POSTAL_DATA is not true)."
+fi
+
+if [ "$PHOENIX_ICD_DATA" = "true" ] || [ "$PHOENIX_ICD_DATA" = "1" ]; then
+  echo "Loading ICD-10 and Alpha-ID..."
+  run_dbtool -iis /ctsms/master_data/icd10gm2012syst_claml_20110923.xml -sl de
+  run_dbtool -iai /ctsms/master_data/icd10gm2012_alphaid_edv_ascii_20110930.txt -e ISO-8859-1 -isr icd10gm2012syst_claml_20110923
+else
+  echo "Skipping ICD-10 and Alpha-ID (PHOENIX_ICD_DATA is not true)."
+fi
+
+if [ "$PHOENIX_OPS_DATA" = "true" ] || [ "$PHOENIX_OPS_DATA" = "1" ]; then
+  echo "Loading OPS..."
+  run_dbtool -ios /ctsms/master_data/ops2012syst_claml_20111103.xml -sl de
+  run_dbtool -ioc /ctsms/master_data/ops2011alpha_edv_ascii_20111031.txt -osr ops2012syst_claml_20111103
+else
+  echo "Skipping OPS (PHOENIX_OPS_DATA is not true)."
+fi
+
+if [ "$PHOENIX_ASP_DATA" = "true" ] || [ "$PHOENIX_ASP_DATA" = "1" ]; then
+  echo "Loading ASP..."
+  run_dbtool -ia /ctsms/master_data/asp_register_20240316.xls -e Cp1252
+else
+  echo "Skipping ASP (PHOENIX_ASP_DATA is not true)."
+fi
 
 # tr gets SIGPIPE when head exits; that status is expected under pipefail.
 rand_string() {
@@ -205,4 +245,4 @@ mkdir -p "$(dirname "$CRED_FILE")" "$(dirname "$MARKER")"
 } | tee "$CRED_FILE"
 
 touch "$MARKER"
-echo "Seed finished. Credentials written to ${CRED_FILE}"
+echo "Init finished. Credentials written to ${CRED_FILE}"

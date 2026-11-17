@@ -112,7 +112,7 @@ docker compose --profile signup up -d
 
 Open http://localhost:3000 (or `PHOENIX_SIGNUP_HTTP_PORT`). There is no browser password. The start page is a site picker: choose My Department, then continue to the proband step.
 
-Signup calls the app REST API as `my_department_signup_en`, `my_department_signup_de`, and `my_department_signup_es` (password equals the username). `config.cfg` in the container is pointed at Postgres, Redis, and `my_department_cron`. The cron password is the random value `db-init` writes to `/credentials/login.txt`. Signup waits until that seed has finished.
+Signup calls the app REST API as `my_department_signup_en`, `my_department_signup_de`, and `my_department_signup_es` (password equals the username). `config.cfg` in the container is pointed at Postgres, Redis, and `my_department_cron`. The cron password is the random value `db-init` writes to `/credentials/login.txt`. Signup waits until that init has finished.
 
 ## Environment variables
 
@@ -125,6 +125,12 @@ See [`.env.example`](.env.example). Important ones:
 | `PHOENIX_POSTGRES_PASSWORD` | `ctsms` | DB password |
 | `PHOENIX_JAVA_XMX` | `1536m` | Tomcat heap |
 | `PHOENIX_DEMO_DATA` | `false` | Load demo dataset on first init only |
+| `PHOENIX_TITLE_DATA` | `false` | Load titles on first init only |
+| `PHOENIX_BANK_DATA` | `false` | Load the German bank directory on first init only |
+| `PHOENIX_POSTAL_DATA` | `false` | Load countries, postal codes, and streets on first init only |
+| `PHOENIX_ICD_DATA` | `false` | Load ICD-10 and Alpha-ID on first init only |
+| `PHOENIX_OPS_DATA` | `false` | Load OPS on first init only |
+| `PHOENIX_ASP_DATA` | `false` | Load the ASP register on first init only |
 | `PHOENIX_PUBLIC_URL` | `http://localhost:8888` | Printed login URL and Signup link back to the UI |
 | `PHOENIX_SIGNUP_HTTP_PORT` | `3000` | Host port for Signup (`--profile signup`) |
 | `PHOENIX_CTSMS_IMAGE` | `phoenixctms/ctsms:latest` | Override the Java image (e.g. GHCR) |
@@ -133,6 +139,7 @@ See [`.env.example`](.env.example). Important ones:
 ## Architecture notes
 
 - The WAR is built in a multi-stage Dockerfile (JDK 21 + Maven), migrated with jakartaee-migration for Tomcat 10, then copied into the runtime image. End users do **not** run Maven.
+- State-diagram tooltip PNGs are rendered by bulk-processor `render.sh` in the image publish job, after init, and stored in that WAR. Graphviz is not installed in the runtime image.
 - Schema SQL is generated at image build time and applied by `db-migrate` on first start.
 - Master-data load and user creation run once in `db-init` (skips when the `phoenix` user or init marker is already present). A later start still creates any missing `my_department_signup_{en,de,es}` user.
 - Perl bulk-processor is installed in the `ctsms` image so JobService can exec `process.pl` locally.

@@ -51,13 +51,16 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push app image
+      - name: Build app image
         id: build
         uses: docker/build-push-action@v6
         with:
           context: ./app
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          load: ${{ github.event_name != 'pull_request' }}
+          push: false
+          provenance: false
+          sbom: false
+          tags: phoenixctms-ctsms:ci
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             CTSMS_TAG=${{ github.event.inputs.ctsms_tag || 'master' }}
@@ -67,8 +70,31 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Render tooltips and push app image
+        if: github.event_name != 'pull_request'
+        id: publish
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          PHOENIX_CTSMS_IMAGE: phoenixctms-ctsms:ci
+        run: |
+          set -euo pipefail
+          bash app/ci-bundle-tooltips.sh
+          digest=""
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            docker tag phoenixctms-ctsms:bundled "$tag"
+            out="$(docker push "$tag" 2>&1)"
+            printf '%s\n' "$out"
+            d="$(printf '%s\n' "$out" | awk '/digest: /{print $3}' | tail -n 1)"
+            if [ -n "$d" ]; then
+              digest="$d"
+            fi
+          done <<< "$TAGS"
+          test -n "$digest"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
     outputs:
-      image_digest: ${{ steps.build.outputs.digest }}
+      image_digest: ${{ steps.publish.outputs.digest || steps.build.outputs.digest }}
 
   build-signup:
     runs-on: ubuntu-latest
@@ -126,7 +152,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compose smoke (pull + up + seed)
+      - name: Compose smoke (pull + up + init)
         env:
           PHOENIX_CTSMS_IMAGE: ${{ env.APP_IMAGE }}@${{ needs.build-app.outputs.image_digest }}
         run: |
