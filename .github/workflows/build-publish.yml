@@ -23,7 +23,7 @@ env:
   SIGNUP_IMAGE: ghcr.io/${{ github.repository_owner }}/signup
 
 jobs:
-  build-app:
+  build-ctsms:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -40,7 +40,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker metadata (app)
+      - name: Docker metadata (ctsms)
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -51,7 +51,7 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build app image
+      - name: Build ctsms image
         id: build
         uses: docker/build-push-action@v6
         with:
@@ -70,7 +70,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Render tooltips and push app image
+      - name: Render tooltips and push ctsms image
         if: github.event_name != 'pull_request'
         id: publish
         env:
@@ -138,7 +138,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   smoke:
-    needs: [build-app]
+    needs: [build-ctsms]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -154,7 +154,7 @@ jobs:
 
       - name: Compose smoke (pull + up + init)
         env:
-          PHOENIX_CTSMS_IMAGE: ${{ env.APP_IMAGE }}@${{ needs.build-app.outputs.image_digest }}
+          PHOENIX_CTSMS_IMAGE: ${{ env.APP_IMAGE }}@${{ needs.build-ctsms.outputs.image_digest }}
         run: |
           set -euo pipefail
           docker compose pull db
