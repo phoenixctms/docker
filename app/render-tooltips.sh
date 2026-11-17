@@ -27,16 +27,17 @@ perms="INVENTORY_VIEW_USER_DEPARTMENT,STAFF_DETAIL_IDENTITY,COURSE_VIEW_USER_DEP
 export PGPASSWORD="${PHOENIX_DBPASS:-ctsms}"
 render_dir=/ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/Render
 
-shopt -s nullglob
-skip_cfgs=""
-for cfg in "$render_dir"/config.cfg "$render_dir"/config_*.cfg; do
-  case "$cfg" in
-    *.debug.cfg) continue ;;
-  esac
+# Published tooltip images are English and German only.
+cfgs=("$render_dir/config.cfg" "$render_dir/config_de.cfg")
+for cfg in "${cfgs[@]}"; do
+  if [ ! -f "$cfg" ]; then
+    echo "Missing render config: ${cfg}" >&2
+    exit 1
+  fi
   sed -r -i 's|http://127\.0\.0\.1:8080/rest|http://ctsms:8080/rest|' "$cfg"
   user="$(sed -n 's/^ctsmsrestapi_username = //p' "$cfg" | head -n 1 | tr -d '\r')"
   case "$user" in
-    my_department_signup_[a-z]*) ;;
+    my_department_signup_en|my_department_signup_de) ;;
     *)
       echo "Unexpected REST user '${user}' in ${cfg}" >&2
       exit 1
@@ -47,38 +48,18 @@ for cfg in "$render_dir"/config.cfg "$render_dir"/config_*.cfg; do
     "SELECT COUNT(*) FROM users WHERE name = '${user}';")"
   if [ "${count:-0}" = "0" ]; then
     echo "Creating signup user ${user}..."
-    log="$(mktemp)"
-    if ! /ctsms/dbtool.sh -cu -dlk my_department -dp "$dept" \
-      -u "$user" -p "$user" -ul "$lang" -pp "$perms" >"$log" 2>&1; then
-      if grep -q 'invalid locale' "$log"; then
-        echo "Skipping ${cfg}: locale ${lang} is not supported."
-        skip_cfgs="${skip_cfgs} ${cfg}"
-        cat "$log"
-        continue
-      fi
-      cat "$log" >&2
-      exit 1
-    fi
-    cat "$log"
+    /ctsms/dbtool.sh -cu -dlk my_department -dp "$dept" \
+      -u "$user" -p "$user" -ul "$lang" -pp "$perms"
   fi
 done
 
 cd "$render_dir"
 render_script="$(mktemp)"
-cp ./render.sh "$render_script"
-for cfg in $skip_cfgs; do
-  sed -i "/$(basename "$cfg")/d" "$render_script"
-done
+grep -E -- '--config=config\.cfg |--config=config_de\.cfg ' ./render.sh > "$render_script"
 bash "$render_script"
 
 missing=0
-for cfg in "$render_dir"/config.cfg "$render_dir"/config_*.cfg; do
-  case "$cfg" in
-    *.debug.cfg) continue ;;
-  esac
-  case " ${skip_cfgs} " in
-    *" ${cfg} "*) continue ;;
-  esac
+for cfg in "${cfgs[@]}"; do
   settings="${cfg/config/settings}"
   png="$(sed -n 's/^trialstatustype_filename = //p' "$settings" | head -n 1 | tr -d '\r')"
   if [ -z "$png" ] || [ ! -s "$png" ]; then
