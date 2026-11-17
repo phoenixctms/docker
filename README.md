@@ -24,14 +24,21 @@ For production single-host Debian installs, keep using [`phoenixctms/install-deb
 
 ## Quick start (prebuilt images)
 
-Once images are published to GHCR:
+Docker is the only dependency. The installer downloads this repository and starts the published images.
+
+Linux, macOS, or WSL:
 
 ```bash
-export PHOENIX_CTSMS_IMAGE=ghcr.io/phoenixctms/ctsms:latest
-docker compose pull
-docker compose up -d
-docker compose logs -f db-init
+curl -fsSL https://raw.githubusercontent.com/phoenixctms/docker/master/install.sh | bash
 ```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/phoenixctms/docker/master/install.ps1 | iex
+```
+
+Files land in `~/phoenixctms` (`%USERPROFILE%\phoenixctms` on Windows). Set `PHOENIX_HOME` to use another directory. An existing `.env` in that directory is left in place.
 
 When init finishes it prints:
 
@@ -51,7 +58,17 @@ PHOENIX_DEMO_DATA=true docker compose up -d
 
 To re-init from scratch after changing init options: `docker compose down -v` then `up` again.
 
+From that directory later:
+
+```bash
+docker compose pull
+docker compose up -d --no-build
+docker compose logs -f db-init
+```
+
 ## Build locally
+
+The installer downloads the Dockerfiles too, so this works in the install directory without git:
 
 ```bash
 docker compose build
