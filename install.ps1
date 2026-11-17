@@ -59,7 +59,11 @@ try {
   Write-Host 'db-init prints the UI URL and the phoenix password.'
   docker compose pull
   docker compose up -d --no-build
-  docker compose logs -f db-init
+  $initId = @(docker compose ps -aq db-init) | Select-Object -First 1
+  if (-not $initId) { throw 'db-init did not start.' }
+  docker logs -f $initId.Trim()
+  $initStatus = (docker inspect -f '{{.State.ExitCode}}' $initId.Trim()).Trim()
+  if ($initStatus -ne '0') { throw "db-init exited with status $initStatus." }
   if (-not $signupFlag -or $signupFlag -eq 'true' -or $signupFlag -eq '1') {
     $signupPort = ($lines | Where-Object { $_ -match '^PHOENIX_SIGNUP_HTTP_PORT=' } | Select-Object -Last 1)
     if ($signupPort) { $signupPort = ($signupPort -replace '^PHOENIX_SIGNUP_HTTP_PORT=', '').Trim() }

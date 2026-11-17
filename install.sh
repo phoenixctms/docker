@@ -91,7 +91,17 @@ echo "Starting in ${DEST}"
 echo "db-init prints the UI URL and the phoenix password."
 docker compose pull
 docker compose up -d --no-build
-docker compose logs -f db-init
+init_id="$(docker compose ps -aq db-init | head -n 1)"
+if [ -z "$init_id" ]; then
+  echo "db-init did not start." >&2
+  exit 1
+fi
+docker logs -f "$init_id"
+init_status="$(docker inspect -f '{{.State.ExitCode}}' "$init_id")"
+if [ "$init_status" != "0" ]; then
+  echo "db-init exited with status ${init_status}." >&2
+  exit 1
+fi
 if [ -z "$signup_flag" ] || [ "$signup_flag" = "true" ] || [ "$signup_flag" = "1" ]; then
   signup_port="$(sed -n 's/^PHOENIX_SIGNUP_HTTP_PORT=//p' .env | tail -n 1 | tr -d '\r[:space:]')"
   echo "Signup: http://localhost:${signup_port:-3000}"

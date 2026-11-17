@@ -66,7 +66,7 @@ From that directory later:
 ```bash
 docker compose pull
 docker compose up -d --no-build
-docker compose logs -f db-init
+docker logs -f "$(docker compose ps -aq db-init | head -n 1)"
 ```
 
 ## Build locally
