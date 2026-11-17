@@ -1,20 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 
-: "${DBSERVER:=db}"
-: "${DBPORT:=5432}"
-: "${DBUSER:=ctsms}"
-: "${DBNAME:=ctsms}"
-: "${DBPASS:=ctsms}"
-: "${DEFAULT_LOCALE:=en}"
-: "${DEMO_DATA:=false}"
-: "${PUBLIC_URL:=http://localhost:8888}"
-: "${APP_HTTP:=http://ctsms:8080}"
+: "${PHOENIX_DBSERVER:=db}"
+: "${PHOENIX_DBPORT:=5432}"
+: "${PHOENIX_DBUSER:=ctsms}"
+: "${PHOENIX_DBNAME:=ctsms}"
+: "${PHOENIX_DBPASS:=ctsms}"
+: "${PHOENIX_DEFAULT_LOCALE:=en}"
+: "${PHOENIX_DEMO_DATA:=false}"
+: "${PHOENIX_PUBLIC_URL:=http://localhost:8888}"
+: "${PHOENIX_APP_HTTP:=http://ctsms:8080}"
 
 MARKER=/ctsms/external_files/.phoenix_seeded
 CRED_FILE=/credentials/login.txt
 
-export PGPASSWORD="$DBPASS"
+export PGPASSWORD="$PHOENIX_DBPASS"
 
 /usr/local/bin/set-properties.sh
 
@@ -31,7 +31,7 @@ fi
 
 phoenix_user_exists() {
   local count
-  count="$(psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" -Atc \
+  count="$(psql -h "$PHOENIX_DBSERVER" -p "$PHOENIX_DBPORT" -U "$PHOENIX_DBUSER" -d "$PHOENIX_DBNAME" -Atc \
     "SELECT COUNT(*) FROM users WHERE name = 'phoenix';" 2>/dev/null || echo 0)"
   [ "${count:-0}" != "0" ]
 }
@@ -41,7 +41,7 @@ print_credentials_if_present() {
     cat "$CRED_FILE"
   else
     echo "Seed already completed (phoenix user present)."
-    echo "URL: ${PUBLIC_URL}"
+    echo "URL: ${PHOENIX_PUBLIC_URL}"
     echo "Username: phoenix"
     echo "Password: (see credentials volume /credentials/login.txt from the original seed)"
   fi
@@ -53,7 +53,7 @@ run_dbtool() {
 
 signup_user_count() {
   local name="$1" count
-  count="$(psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" -Atc \
+  count="$(psql -h "$PHOENIX_DBSERVER" -p "$PHOENIX_DBPORT" -U "$PHOENIX_DBUSER" -d "$PHOENIX_DBNAME" -Atc \
     "SELECT COUNT(*) FROM users WHERE name = '${name}';" 2>/dev/null || echo 0)"
   printf '%s' "${count:-0}"
 }
@@ -107,23 +107,23 @@ fi
 
 echo "Waiting for application HTTP..."
 for i in $(seq 1 90); do
-  if curl -fsS "${APP_HTTP}/" >/dev/null 2>&1; then
+  if curl -fsS "${PHOENIX_APP_HTTP}/" >/dev/null 2>&1; then
     break
   fi
   sleep 5
 done
-curl -fsS "${APP_HTTP}/" >/dev/null
+curl -fsS "${PHOENIX_APP_HTTP}/" >/dev/null
 
 clear_app_caches() {
   echo "Clearing application caches on app..."
-  curl -fsS -X POST "${APP_HTTP}/rest/tools/clearresourcebundlecache" >/dev/null || true
-  curl -fsS -X POST "${APP_HTTP}/rest/tools/clearhibernatecache" >/dev/null || true
-  curl -fsS -X POST "${APP_HTTP}/rest/tools/cleanjavaclasses" >/dev/null || true
+  curl -fsS -X POST "${PHOENIX_APP_HTTP}/rest/tools/clearresourcebundlecache" >/dev/null || true
+  curl -fsS -X POST "${PHOENIX_APP_HTTP}/rest/tools/clearhibernatecache" >/dev/null || true
+  curl -fsS -X POST "${PHOENIX_APP_HTTP}/rest/tools/cleanjavaclasses" >/dev/null || true
 }
 
 echo "Loading master data via dbtool..."
 # Skip forced re-init when production tables were already populated (partial re-run).
-CRITERION_COUNT="$(psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" -Atc \
+CRITERION_COUNT="$(psql -h "$PHOENIX_DBSERVER" -p "$PHOENIX_DBPORT" -U "$PHOENIX_DBUSER" -d "$PHOENIX_DBNAME" -Atc \
   "SELECT COUNT(*) FROM criterion_restriction;" 2>/dev/null || echo 0)"
 if [ "${CRITERION_COUNT:-0}" = "0" ]; then
   run_dbtool -i -f
@@ -184,7 +184,7 @@ ensure_signup_users "$DEPARTMENT_PASSWORD"
 run_dbtool -cu -dlk my_department -dp "$DEPARTMENT_PASSWORD" -u "my_department_cron" -p "$CRON_PASSWORD" \
   -pp "INVENTORY_MASTER_ALL_DEPARTMENTS,STAFF_MASTER_ALL_DEPARTMENTS,COURSE_MASTER_ALL_DEPARTMENTS,TRIAL_MASTER_ALL_DEPARTMENTS,PROBAND_MASTER_ALL_DEPARTMENTS,USER_ALL_DEPARTMENTS,INPUT_FIELD_MASTER,MASS_MAIL_MASTER_ALL_DEPARTMENTS,INVENTORY_MASTER_SEARCH,STAFF_MASTER_SEARCH,COURSE_MASTER_SEARCH,TRIAL_MASTER_SEARCH,PROBAND_MASTER_SEARCH,USER_MASTER_SEARCH,INPUT_FIELD_MASTER_SEARCH,MASS_MAIL_MASTER_SEARCH"
 
-if [ "$DEMO_DATA" = "true" ] || [ "$DEMO_DATA" = "1" ]; then
+if [ "$PHOENIX_DEMO_DATA" = "true" ] || [ "$PHOENIX_DEMO_DATA" = "1" ]; then
   echo "Loading demo data..."
   run_dbtool --load_demo_data || run_dbtool -ldd -f || true
 fi
@@ -194,7 +194,7 @@ clear_app_caches
 mkdir -p "$(dirname "$CRED_FILE")" "$(dirname "$MARKER")"
 {
   echo "Phoenix CTMS initial setup complete."
-  echo "URL: ${PUBLIC_URL}"
+  echo "URL: ${PHOENIX_PUBLIC_URL}"
   echo "Username: phoenix"
   echo "Password: ${USER_PASSWORD}"
   echo "Department passphrase (my_department): ${DEPARTMENT_PASSWORD}"

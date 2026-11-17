@@ -8,13 +8,15 @@ services:
   db:
     image: postgres:17
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-ctsms}
-      POSTGRES_USER: ${POSTGRES_USER:-ctsms}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctsms}
+      PHOENIX_POSTGRES_DB: ${PHOENIX_POSTGRES_DB:-ctsms}
+      PHOENIX_POSTGRES_USER: ${PHOENIX_POSTGRES_USER:-ctsms}
+      PHOENIX_POSTGRES_PASSWORD: ${PHOENIX_POSTGRES_PASSWORD:-ctsms}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db/docker-entrypoint.sh:/phoenix-db-entrypoint.sh:ro
+    entrypoint: ["/bin/bash", "/phoenix-db-entrypoint.sh"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U $$PHOENIX_POSTGRES_USER -d $$PHOENIX_POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -31,54 +33,54 @@ services:
       retries: 10
 
   db-migrate:
-    image: ${CTSMS_IMAGE:-phoenixctms/ctsms:latest}
+    image: ${PHOENIX_CTSMS_IMAGE:-phoenixctms/ctsms:latest}
     build:
       context: ./app
       args:
-        CTSMS_TAG: ${CTSMS_TAG:-master}
-        CONFIG_TAG: ${CONFIG_TAG:-master}
-        MASTER_DATA_TAG: ${MASTER_DATA_TAG:-master}
-        BULK_TAG: ${BULK_TAG:-master}
+        CTSMS_TAG: ${PHOENIX_CTSMS_TAG:-master}
+        CONFIG_TAG: ${PHOENIX_CONFIG_TAG:-master}
+        MASTER_DATA_TAG: ${PHOENIX_MASTER_DATA_TAG:-master}
+        BULK_TAG: ${PHOENIX_BULK_TAG:-master}
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DBSERVER: db
-      DBPORT: 5432
-      DBUSER: ${POSTGRES_USER:-ctsms}
-      DBPASS: ${POSTGRES_PASSWORD:-ctsms}
-      DBNAME: ${POSTGRES_DB:-ctsms}
+      PHOENIX_DBSERVER: db
+      PHOENIX_DBPORT: 5432
+      PHOENIX_DBUSER: ${PHOENIX_POSTGRES_USER:-ctsms}
+      PHOENIX_DBPASS: ${PHOENIX_POSTGRES_PASSWORD:-ctsms}
+      PHOENIX_DBNAME: ${PHOENIX_POSTGRES_DB:-ctsms}
     entrypoint: ["/usr/local/bin/db-migrate.sh"]
     restart: "no"
 
   ctsms:
     container_name: ctsms
-    image: ${CTSMS_IMAGE:-phoenixctms/ctsms:latest}
+    image: ${PHOENIX_CTSMS_IMAGE:-phoenixctms/ctsms:latest}
     build:
       context: ./app
       args:
-        CTSMS_TAG: ${CTSMS_TAG:-master}
-        CONFIG_TAG: ${CONFIG_TAG:-master}
-        MASTER_DATA_TAG: ${MASTER_DATA_TAG:-master}
-        BULK_TAG: ${BULK_TAG:-master}
+        CTSMS_TAG: ${PHOENIX_CTSMS_TAG:-master}
+        CONFIG_TAG: ${PHOENIX_CONFIG_TAG:-master}
+        MASTER_DATA_TAG: ${PHOENIX_MASTER_DATA_TAG:-master}
+        BULK_TAG: ${PHOENIX_BULK_TAG:-master}
     depends_on:
       db-migrate:
         condition: service_completed_successfully
     environment:
-      DBSERVER: db
-      DBPORT: 5432
-      DBUSER: ${POSTGRES_USER:-ctsms}
-      DBPASS: ${POSTGRES_PASSWORD:-ctsms}
-      DBNAME: ${POSTGRES_DB:-ctsms}
-      DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
-      JAVA_XMS: ${JAVA_XMS:-512m}
-      JAVA_XMX: ${JAVA_XMX:-1536m}
+      PHOENIX_DBSERVER: db
+      PHOENIX_DBPORT: 5432
+      PHOENIX_DBUSER: ${PHOENIX_POSTGRES_USER:-ctsms}
+      PHOENIX_DBPASS: ${PHOENIX_POSTGRES_PASSWORD:-ctsms}
+      PHOENIX_DBNAME: ${PHOENIX_POSTGRES_DB:-ctsms}
+      PHOENIX_DEFAULT_LOCALE: ${PHOENIX_DEFAULT_LOCALE:-en}
+      PHOENIX_JAVA_XMS: ${PHOENIX_JAVA_XMS:-512m}
+      PHOENIX_JAVA_XMX: ${PHOENIX_JAVA_XMX:-1536m}
     volumes:
       - external_files:/ctsms/external_files
       - credentials:/credentials
       - bulk_output:/ctsms/bulk_processor/output
     ports:
-      - "${CTSMS_BIND_ADDRESS:-127.0.0.1}:${CTSMS_HTTP_PORT:-8888}:8080"
+      - "${PHOENIX_CTSMS_BIND_ADDRESS:-127.0.0.1}:${PHOENIX_CTSMS_HTTP_PORT:-8888}:8080"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/ | head -c 1 >/dev/null || exit 1"]
       interval: 15s
@@ -87,26 +89,27 @@ services:
       start_period: 120s
 
   db-init:
-    image: ${CTSMS_IMAGE:-phoenixctms/ctsms:latest}
+    image: ${PHOENIX_CTSMS_IMAGE:-phoenixctms/ctsms:latest}
     build:
       context: ./app
       args:
-        CTSMS_TAG: ${CTSMS_TAG:-master}
-        CONFIG_TAG: ${CONFIG_TAG:-master}
-        MASTER_DATA_TAG: ${MASTER_DATA_TAG:-master}
-        BULK_TAG: ${BULK_TAG:-master}
+        CTSMS_TAG: ${PHOENIX_CTSMS_TAG:-master}
+        CONFIG_TAG: ${PHOENIX_CONFIG_TAG:-master}
+        MASTER_DATA_TAG: ${PHOENIX_MASTER_DATA_TAG:-master}
+        BULK_TAG: ${PHOENIX_BULK_TAG:-master}
     depends_on:
       ctsms:
         condition: service_healthy
     environment:
-      DBSERVER: db
-      DBPORT: 5432
-      DBUSER: ${POSTGRES_USER:-ctsms}
-      DBPASS: ${POSTGRES_PASSWORD:-ctsms}
-      DBNAME: ${POSTGRES_DB:-ctsms}
-      DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
-      DEMO_DATA: ${DEMO_DATA:-false}
-      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8888}
+      PHOENIX_DBSERVER: db
+      PHOENIX_DBPORT: 5432
+      PHOENIX_DBUSER: ${PHOENIX_POSTGRES_USER:-ctsms}
+      PHOENIX_DBPASS: ${PHOENIX_POSTGRES_PASSWORD:-ctsms}
+      PHOENIX_DBNAME: ${PHOENIX_POSTGRES_DB:-ctsms}
+      PHOENIX_DEFAULT_LOCALE: ${PHOENIX_DEFAULT_LOCALE:-en}
+      PHOENIX_DEMO_DATA: ${PHOENIX_DEMO_DATA:-false}
+      PHOENIX_PUBLIC_URL: ${PHOENIX_PUBLIC_URL:-http://localhost:8888}
+      PHOENIX_APP_HTTP: http://ctsms:8080
     volumes:
       - external_files:/ctsms/external_files
       - credentials:/credentials
@@ -116,33 +119,33 @@ services:
   # Optional Signup Dancer app (UI Perl jobs use bulk-processor inside `ctsms`)
   signup:
     profiles: ["signup"]
-    image: ${SIGNUP_IMAGE:-phoenixctms/signup:latest}
+    image: ${PHOENIX_SIGNUP_IMAGE:-phoenixctms/signup:latest}
     build:
       context: ./signup
       args:
-        BULK_TAG: ${BULK_TAG:-master}
-        CONFIG_TAG: ${CONFIG_TAG:-master}
+        BULK_TAG: ${PHOENIX_BULK_TAG:-master}
+        CONFIG_TAG: ${PHOENIX_CONFIG_TAG:-master}
     depends_on:
       db-init:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
     environment:
-      DBSERVER: db
-      DBPORT: 5432
-      DBUSER: ${POSTGRES_USER:-ctsms}
-      DBPASS: ${POSTGRES_PASSWORD:-ctsms}
-      DBNAME: ${POSTGRES_DB:-ctsms}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      APP_HTTP: http://ctsms:8080
-      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8888}
+      PHOENIX_DBSERVER: db
+      PHOENIX_DBPORT: 5432
+      PHOENIX_DBUSER: ${PHOENIX_POSTGRES_USER:-ctsms}
+      PHOENIX_DBPASS: ${PHOENIX_POSTGRES_PASSWORD:-ctsms}
+      PHOENIX_DBNAME: ${PHOENIX_POSTGRES_DB:-ctsms}
+      PHOENIX_REDIS_HOST: redis
+      PHOENIX_REDIS_PORT: 6379
+      PHOENIX_APP_HTTP: http://ctsms:8080
+      PHOENIX_PUBLIC_URL: ${PHOENIX_PUBLIC_URL:-http://localhost:8888}
     volumes:
       - external_files:/ctsms/external_files
       - bulk_output:/ctsms/bulk_processor/output
       - credentials:/credentials:ro
     ports:
-      - "${CTSMS_BIND_ADDRESS:-127.0.0.1}:${SIGNUP_HTTP_PORT:-3000}:3000"
+      - "${PHOENIX_CTSMS_BIND_ADDRESS:-127.0.0.1}:${PHOENIX_SIGNUP_HTTP_PORT:-3000}:3000"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/ | head -c 1 >/dev/null || exit 1"]
       interval: 15s

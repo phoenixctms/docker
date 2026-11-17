@@ -1,25 +1,25 @@
 #!/bin/bash
 set -euo pipefail
 
-: "${DBSERVER:=db}"
-: "${DBPORT:=5432}"
-: "${DBUSER:=ctsms}"
-: "${DBNAME:=ctsms}"
-: "${DBPASS:=ctsms}"
+: "${PHOENIX_DBSERVER:=db}"
+: "${PHOENIX_DBPORT:=5432}"
+: "${PHOENIX_DBUSER:=ctsms}"
+: "${PHOENIX_DBNAME:=ctsms}"
+: "${PHOENIX_DBPASS:=ctsms}"
 
-export PGPASSWORD="$DBPASS"
+export PGPASSWORD="$PHOENIX_DBPASS"
 
-echo "Waiting for PostgreSQL at ${DBSERVER}:${DBPORT}..."
+echo "Waiting for PostgreSQL at ${PHOENIX_DBSERVER}:${PHOENIX_DBPORT}..."
 for i in $(seq 1 60); do
-  if pg_isready -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" >/dev/null 2>&1; then
+  if pg_isready -h "$PHOENIX_DBSERVER" -p "$PHOENIX_DBPORT" -U "$PHOENIX_DBUSER" -d "$PHOENIX_DBNAME" >/dev/null 2>&1; then
     break
   fi
   sleep 2
 done
-pg_isready -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME"
+pg_isready -h "$PHOENIX_DBSERVER" -p "$PHOENIX_DBPORT" -U "$PHOENIX_DBUSER" -d "$PHOENIX_DBNAME"
 
 echo "Checking whether schema is already present..."
-EXISTS="$(psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" -Atc \
+EXISTS="$(psql -h "$PHOENIX_DBSERVER" -p "$PHOENIX_DBPORT" -U "$PHOENIX_DBUSER" -d "$PHOENIX_DBNAME" -Atc \
   "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='users';")"
 
 if [ "$EXISTS" != "0" ]; then
@@ -28,7 +28,7 @@ if [ "$EXISTS" != "0" ]; then
 fi
 
 echo "Applying schema-create.sql, index-create.sql, schema-set-version.sql in one transaction..."
-psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" \
+psql -h "$PHOENIX_DBSERVER" -p "$PHOENIX_DBPORT" -U "$PHOENIX_DBUSER" -d "$PHOENIX_DBNAME" \
   -v ON_ERROR_STOP=1 --single-transaction \
   -f /ctsms/db/schema-create.sql \
   -f /ctsms/db/index-create.sql \
@@ -39,7 +39,7 @@ if [ -d /ctsms/install/sql ]; then
   for sql in /ctsms/install/sql/*.sql; do
     if [ -f "$sql" ]; then
       echo "Applying $sql ..."
-      psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" -v ON_ERROR_STOP=1 -f "$sql"
+      psql -h "$PHOENIX_DBSERVER" -p "$PHOENIX_DBPORT" -U "$PHOENIX_DBUSER" -d "$PHOENIX_DBNAME" -v ON_ERROR_STOP=1 -f "$sql"
     fi
   done
 fi
