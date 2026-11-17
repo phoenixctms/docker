@@ -67,7 +67,9 @@ From that directory later:
 docker compose pull
 docker compose up -d --no-build db redis db-migrate ctsms
 docker compose up -d --no-build --no-deps db-init
-docker logs -f "$(docker compose ps -aq db-init | head -n 1)"
+init_id="$(docker compose ps -aq db-init | head -n 1)"
+docker wait "$init_id" >/dev/null
+docker logs "$init_id" 2>&1 | sed -n '/Phoenix CTMS initial setup complete\./,$p'
 docker compose up -d --no-build signup
 ```
 
