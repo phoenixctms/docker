@@ -19,7 +19,7 @@ For production single-host Debian installs, keep using [`phoenixctms/install-deb
 
 - Docker Engine or Docker Desktop (Windows/macOS/Linux)
 - About 6–8 GB RAM recommended
-- Port `8888` free on localhost (override with `PHOENIX_HTTP_PORT`; bind address with `PHOENIX_BIND_ADDRESS`)
+- Port `8888` free on localhost (override with `CTSMS_HTTP_PORT`; bind address with `CTSMS_BIND_ADDRESS`)
 - Port `3000` free when using the signup profile (override with `SIGNUP_HTTP_PORT`)
 
 ## Quick start (prebuilt images)
@@ -27,7 +27,7 @@ For production single-host Debian installs, keep using [`phoenixctms/install-deb
 Once images are published to GHCR:
 
 ```bash
-export PHOENIX_IMAGE=ghcr.io/phoenixctms/ctsms:latest
+export CTSMS_IMAGE=ghcr.io/phoenixctms/ctsms:latest
 docker compose pull
 docker compose up -d
 docker compose logs -f db-init
@@ -46,7 +46,7 @@ Open http://localhost:8888 and log in. Credentials are also stored in the `crede
 Optional demo data (set on **first** start; enabling it later does not re-import because init runs once per data volumes):
 
 ```bash
-SEED_DEMO_DATA=true docker compose up -d
+DEMO_DATA=true docker compose up -d
 ```
 
 To re-init from scratch after changing init options: `docker compose down -v` then `up` again.
@@ -100,15 +100,15 @@ See [`.env.example`](.env.example). Important ones:
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `PHOENIX_HTTP_PORT` | `8888` | Host port for the UI |
-| `PHOENIX_BIND_ADDRESS` | `127.0.0.1` | Host interface published for the UI (`0.0.0.0` for LAN access) |
+| `CTSMS_HTTP_PORT` | `8888` | Host port for the UI |
+| `CTSMS_BIND_ADDRESS` | `127.0.0.1` | Host interface for the UI and Signup (`0.0.0.0` for LAN access) |
 | `POSTGRES_PASSWORD` | `ctsms` | DB password |
 | `JAVA_XMX` | `1536m` | Tomcat heap |
-| `SEED_DEMO_DATA` | `false` | Load demo dataset on first init only |
+| `DEMO_DATA` | `false` | Load demo dataset on first init only |
 | `PUBLIC_URL` | `http://localhost:8888` | Printed login URL and Signup link back to the UI |
 | `SIGNUP_HTTP_PORT` | `3000` | Host port for Signup (`--profile signup`) |
-| `PHOENIX_IMAGE` | `phoenixctms/ctsms:latest` | Override the Java image (e.g. GHCR) |
-| `PHOENIX_SIGNUP_IMAGE` | `phoenixctms/signup:latest` | Override the Signup image (e.g. GHCR) |
+| `CTSMS_IMAGE` | `phoenixctms/ctsms:latest` | Override the Java image (e.g. GHCR) |
+| `SIGNUP_IMAGE` | `phoenixctms/signup:latest` | Override the Signup image (e.g. GHCR) |
 
 ## Architecture notes
 

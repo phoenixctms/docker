@@ -128,11 +128,11 @@ jobs:
 
       - name: Compose smoke (pull + up + seed)
         env:
-          PHOENIX_IMAGE: ${{ env.APP_IMAGE }}@${{ needs.build-app.outputs.image_digest }}
+          CTSMS_IMAGE: ${{ env.APP_IMAGE }}@${{ needs.build-app.outputs.image_digest }}
         run: |
           set -euo pipefail
           docker compose pull db
-          docker pull "$PHOENIX_IMAGE"
+          docker pull "$CTSMS_IMAGE"
           docker compose up -d db
           docker compose up -d --no-build db-migrate
           docker compose up -d --no-build ctsms

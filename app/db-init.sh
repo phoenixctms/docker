@@ -7,7 +7,7 @@ set -euo pipefail
 : "${DBNAME:=ctsms}"
 : "${DBPASS:=ctsms}"
 : "${DEFAULT_LOCALE:=en}"
-: "${SEED_DEMO_DATA:=false}"
+: "${DEMO_DATA:=false}"
 : "${PUBLIC_URL:=http://localhost:8888}"
 : "${APP_HTTP:=http://ctsms:8080}"
 
@@ -184,7 +184,7 @@ ensure_signup_users "$DEPARTMENT_PASSWORD"
 run_dbtool -cu -dlk my_department -dp "$DEPARTMENT_PASSWORD" -u "my_department_cron" -p "$CRON_PASSWORD" \
   -pp "INVENTORY_MASTER_ALL_DEPARTMENTS,STAFF_MASTER_ALL_DEPARTMENTS,COURSE_MASTER_ALL_DEPARTMENTS,TRIAL_MASTER_ALL_DEPARTMENTS,PROBAND_MASTER_ALL_DEPARTMENTS,USER_ALL_DEPARTMENTS,INPUT_FIELD_MASTER,MASS_MAIL_MASTER_ALL_DEPARTMENTS,INVENTORY_MASTER_SEARCH,STAFF_MASTER_SEARCH,COURSE_MASTER_SEARCH,TRIAL_MASTER_SEARCH,PROBAND_MASTER_SEARCH,USER_MASTER_SEARCH,INPUT_FIELD_MASTER_SEARCH,MASS_MAIL_MASTER_SEARCH"
 
-if [ "$SEED_DEMO_DATA" = "true" ] || [ "$SEED_DEMO_DATA" = "1" ]; then
+if [ "$DEMO_DATA" = "true" ] || [ "$DEMO_DATA" = "1" ]; then
   echo "Loading demo data..."
   run_dbtool --load_demo_data || run_dbtool -ldd -f || true
 fi

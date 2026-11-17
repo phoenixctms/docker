@@ -31,7 +31,7 @@ services:
       retries: 10
 
   db-migrate:
-    image: ${PHOENIX_IMAGE:-phoenixctms/ctsms:latest}
+    image: ${CTSMS_IMAGE:-phoenixctms/ctsms:latest}
     build:
       context: ./app
       args:
@@ -53,7 +53,7 @@ services:
 
   ctsms:
     container_name: ctsms
-    image: ${PHOENIX_IMAGE:-phoenixctms/ctsms:latest}
+    image: ${CTSMS_IMAGE:-phoenixctms/ctsms:latest}
     build:
       context: ./app
       args:
@@ -78,7 +78,7 @@ services:
       - credentials:/credentials
       - bulk_output:/ctsms/bulk_processor/output
     ports:
-      - "${PHOENIX_BIND_ADDRESS:-127.0.0.1}:${PHOENIX_HTTP_PORT:-8888}:8080"
+      - "${CTSMS_BIND_ADDRESS:-127.0.0.1}:${CTSMS_HTTP_PORT:-8888}:8080"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/ | head -c 1 >/dev/null || exit 1"]
       interval: 15s
@@ -87,7 +87,7 @@ services:
       start_period: 120s
 
   db-init:
-    image: ${PHOENIX_IMAGE:-phoenixctms/ctsms:latest}
+    image: ${CTSMS_IMAGE:-phoenixctms/ctsms:latest}
     build:
       context: ./app
       args:
@@ -105,7 +105,7 @@ services:
       DBPASS: ${POSTGRES_PASSWORD:-ctsms}
       DBNAME: ${POSTGRES_DB:-ctsms}
       DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
-      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      DEMO_DATA: ${DEMO_DATA:-false}
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8888}
     volumes:
       - external_files:/ctsms/external_files
@@ -116,7 +116,7 @@ services:
   # Optional Signup Dancer app (UI Perl jobs use bulk-processor inside `ctsms`)
   signup:
     profiles: ["signup"]
-    image: ${PHOENIX_SIGNUP_IMAGE:-phoenixctms/signup:latest}
+    image: ${SIGNUP_IMAGE:-phoenixctms/signup:latest}
     build:
       context: ./signup
       args:
@@ -142,7 +142,7 @@ services:
       - bulk_output:/ctsms/bulk_processor/output
       - credentials:/credentials:ro
     ports:
-      - "${PHOENIX_BIND_ADDRESS:-127.0.0.1}:${SIGNUP_HTTP_PORT:-3000}:3000"
+      - "${CTSMS_BIND_ADDRESS:-127.0.0.1}:${SIGNUP_HTTP_PORT:-3000}:3000"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/ | head -c 1 >/dev/null || exit 1"]
       interval: 15s
