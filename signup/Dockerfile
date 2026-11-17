@@ -58,6 +58,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxml-dumper-perl \
     libxml-libxml-perl \
     libyaml-libyaml-perl \
+    libyaml-perl \
     libyaml-tiny-perl \
     libtemplate-perl \
     libdancer-perl \

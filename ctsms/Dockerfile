@@ -121,6 +121,7 @@ RUN apt-get update \
       libxml-dumper-perl \
       libxml-libxml-perl \
       libyaml-libyaml-perl \
+      libyaml-perl \
       libyaml-tiny-perl \
       libtemplate-perl \
       libdancer-perl \
