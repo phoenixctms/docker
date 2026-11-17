@@ -131,9 +131,6 @@ RUN apt-get update \
       libsys-cpuaffinity-perl \
       libtest-utf8-perl \
       libmoosex-hasdefaults-perl \
-      gnuplot \
-      imagemagick \
-      ghostscript \
       build-essential \
       cpanminus \
  && cpanm --notest Dancer::Plugin::I18N \
