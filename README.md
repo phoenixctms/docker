@@ -43,15 +43,23 @@ irm https://raw.githubusercontent.com/phoenixctms/docker/master/install.ps1 | ie
 
 Files land in `~/phoenixctms` (`%USERPROFILE%\phoenixctms` on Windows). Set `PHOENIX_HOME` to use another directory. An existing `.env` in that directory is left in place.
 
-When init finishes it prints:
+When init finishes it prints the credential tail, then the Signup URL:
 
 ```text
+Phoenix CTMS initial setup complete.
 URL: http://localhost:8888
 Username: phoenix
 Password: ...
+Department passphrase (my_department): ...
+Cron user password (my_department_cron): ...
+Signup service user (en): my_department_signup_en / my_department_signup_en
+Signup service user (de): my_department_signup_de / my_department_signup_de
+Signup service user (es): my_department_signup_es / my_department_signup_es
+Init finished. Credentials written to /credentials/login.txt
+Signup: http://localhost:3000
 ```
 
-Open http://localhost:8888 and log in. Credentials are also stored in the `credentials` volume (`/credentials/login.txt` inside `db-init` / `ctsms`). Signup is at http://localhost:3000 unless `PHOENIX_SIGNUP=false`.
+Open http://localhost:8888 and log in. The same text is stored in the `credentials` volume (`/credentials/login.txt` inside `db-init` / `ctsms`). Signup is omitted when `PHOENIX_SIGNUP=false`.
 
 Optional demo data (set on **first** start; enabling it later does not re-import because init runs once per data volumes):
 
@@ -59,7 +67,7 @@ Optional demo data (set on **first** start; enabling it later does not re-import
 PHOENIX_DEMO_DATA=true docker compose up -d
 ```
 
-To re-init from scratch after changing init options: `docker compose down -v` then `up` again.
+To re-init from scratch after changing init options: `docker compose --profile signup down -v` then start again. `--profile signup` also removes the Signup and Redis volumes when that profile is not active in `.env`.
 
 From that directory later:
 
@@ -77,10 +85,16 @@ docker compose up -d --no-build signup
 
 The installer downloads the Dockerfiles too, so this works in the install directory without git:
 
+`docker compose up -d` waits for `db-init` and does not show its log. Build, then start the dependencies, wait, and print the credential tail:
+
 ```bash
 docker compose build
-docker compose up -d
-docker compose logs -f db-init
+docker compose up -d db redis db-migrate ctsms
+docker compose up -d --no-deps db-init
+init_id="$(docker compose ps -aq db-init | head -n 1)"
+docker wait "$init_id" >/dev/null
+docker logs "$init_id" 2>&1 | sed -n '/Phoenix CTMS initial setup complete\./,$p'
+docker compose up -d signup
 ```
 
 Build args (optional):
@@ -98,8 +112,8 @@ docker compose logs -f ctsms
 # Stop (keep data)
 docker compose down
 
-# Reset everything (DB + uploads + credentials)
-docker compose down -v
+# Reset everything (DB + uploads + credentials, including Signup)
+docker compose --profile signup down -v
 ```
 
 ## Perl jobs (ECRF export, etc.)
@@ -142,7 +156,7 @@ See [`.env.example`](.env.example). Important ones:
 ## Architecture notes
 
 - The WAR is built in a multi-stage Dockerfile (JDK 21 + Maven), migrated with jakartaee-migration for Tomcat 10, then copied into the runtime image. End users do **not** run Maven.
-- State-diagram tooltip PNGs are rendered by bulk-processor `render.sh` in the image publish job, after init, and stored in that WAR. Graphviz is not installed in the runtime image.
+- State-diagram tooltip PNGs (English and German) are rendered by bulk-processor `render.sh` in the image publish job, after init, and stored in that WAR. Graphviz, gnuplot, ImageMagick, and Ghostscript are not installed in the runtime images.
 - Schema SQL is generated at image build time and applied by `db-migrate` on first start.
 - Master-data load and user creation run once in `db-init` (skips when the `phoenix` user or init marker is already present). A later start still creates any missing `my_department_signup_{en,de,es}` user.
 - Perl bulk-processor is installed in the `ctsms` image so JobService can exec `process.pl` locally.
