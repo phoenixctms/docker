@@ -6,7 +6,13 @@ REF="${PHOENIX_REF:-master}"
 DEST="${PHOENIX_HOME:-$HOME/phoenixctms}"
 URL="https://github.com/phoenixctms/docker/archive/refs/heads/${REF}.tar.gz"
 
-if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Install Docker Engine or Docker Desktop, then run this again." >&2
+  exit 1
+fi
+# docker.exe reads stdin. Under curl | bash that stdin is this script, so close it.
+docker() { command docker "$@" </dev/null; }
+if ! docker compose version >/dev/null 2>&1; then
   echo "Install Docker Engine or Docker Desktop, then run this again." >&2
   exit 1
 fi

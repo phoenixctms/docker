@@ -17,14 +17,15 @@ For production single-host Debian installs, keep using [`phoenixctms/install-deb
 
 ## Requirements
 
-- Docker Engine or Docker Desktop (Windows/macOS/Linux)
+- Docker Engine (Linux) or Docker Desktop (Windows/macOS)
+- On Windows, [WSL2](https://learn.microsoft.com/windows/wsl/install). Docker Desktop runs on it. The bash installer runs inside WSL; the PowerShell installer runs in Windows and uses that same WSL2 backend.
 - About 6–8 GB RAM recommended
 - Port `8888` free on localhost (override with `PHOENIX_CTSMS_HTTP_PORT`; bind address with `PHOENIX_CTSMS_BIND_ADDRESS`)
 - Port `3000` free when using the signup profile (override with `PHOENIX_SIGNUP_HTTP_PORT`)
 
 ## Quick start (prebuilt images)
 
-Docker is the only dependency. The installer downloads this repository and starts the published images.
+No git checkout. The installer downloads this repository and starts the published images. On Windows, install WSL2 first.
 
 Linux, macOS, or WSL:
 

@@ -6,7 +6,7 @@ $Dest = if ($env:PHOENIX_HOME) { $env:PHOENIX_HOME } else { Join-Path $env:USERP
 $Url = "https://github.com/phoenixctms/docker/archive/refs/heads/$Ref.zip"
 
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-  Write-Error 'Install Docker Desktop, then run this again.'
+  Write-Error 'Install WSL2 and Docker Desktop, then run this again.'
 }
 docker compose version | Out-Null
 
