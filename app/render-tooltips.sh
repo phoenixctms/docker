@@ -28,6 +28,7 @@ export PGPASSWORD="${PHOENIX_DBPASS:-ctsms}"
 render_dir=/ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/Render
 
 shopt -s nullglob
+skip_cfgs=""
 for cfg in "$render_dir"/config.cfg "$render_dir"/config_*.cfg; do
   case "$cfg" in
     *.debug.cfg) continue ;;
@@ -46,18 +47,37 @@ for cfg in "$render_dir"/config.cfg "$render_dir"/config_*.cfg; do
     "SELECT COUNT(*) FROM users WHERE name = '${user}';")"
   if [ "${count:-0}" = "0" ]; then
     echo "Creating signup user ${user}..."
-    /ctsms/dbtool.sh -cu -dlk my_department -dp "$dept" \
-      -u "$user" -p "$user" -ul "$lang" -pp "$perms"
+    log="$(mktemp)"
+    if ! /ctsms/dbtool.sh -cu -dlk my_department -dp "$dept" \
+      -u "$user" -p "$user" -ul "$lang" -pp "$perms" >"$log" 2>&1; then
+      if grep -q 'invalid locale' "$log"; then
+        echo "Skipping ${cfg}: locale ${lang} is not supported."
+        skip_cfgs="${skip_cfgs} ${cfg}"
+        cat "$log"
+        continue
+      fi
+      cat "$log" >&2
+      exit 1
+    fi
+    cat "$log"
   fi
 done
 
 cd "$render_dir"
-bash ./render.sh
+render_script="$(mktemp)"
+cp ./render.sh "$render_script"
+for cfg in $skip_cfgs; do
+  sed -i "/$(basename "$cfg")/d" "$render_script"
+done
+bash "$render_script"
 
 missing=0
 for cfg in "$render_dir"/config.cfg "$render_dir"/config_*.cfg; do
   case "$cfg" in
     *.debug.cfg) continue ;;
+  esac
+  case " ${skip_cfgs} " in
+    *" ${cfg} "*) continue ;;
   esac
   settings="${cfg/config/settings}"
   png="$(sed -n 's/^trialstatustype_filename = //p' "$settings" | head -n 1 | tr -d '\r')"
