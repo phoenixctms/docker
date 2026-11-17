@@ -57,7 +57,7 @@ RUN apt-get update \
 ############################
 # Runtime: Tomcat 10 + config
 ############################
-FROM tomcat:10.1-jdk21-temurin
+FROM tomcat:10.1-jre21-temurin-jammy
 
 ARG CONFIG_TAG
 ARG MASTER_DATA_TAG
@@ -72,7 +72,7 @@ USER root
 # JobService runs perl ETL scripts in this container (same layout as install-debian).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      curl ca-certificates postgresql-client bash coreutils \
+      curl ca-certificates postgresql-client bash coreutils unzip zip \
       perl \
       libarchive-zip-perl \
       libconfig-any-perl \
@@ -136,13 +136,16 @@ RUN apt-get update \
       ghostscript \
       build-essential \
       cpanminus \
- && rm -rf /var/lib/apt/lists/* \
  && cpanm --notest Dancer::Plugin::I18N \
  && cpanm --notest Dancer::Session::Redis \
  && cpanm --notest DateTime::Format::Excel \
  && cpanm --notest Spreadsheet::Reader::Format \
  && cpanm --notest Spreadsheet::Reader::ExcelXML \
  && cpanm --notest Tie::IxHash \
+ && rm -rf /root/.cpanm \
+ && apt-get purge -y build-essential cpanminus \
+ && apt-get autoremove -y --purge \
+ && rm -rf /var/lib/apt/lists/* \
  && rm -rf "${CATALINA_BASE}/webapps/*" \
  && mkdir -p /ctsms/external_files /ctsms/master_data /ctsms/db /credentials /ctsms/bulk_processor/output
 

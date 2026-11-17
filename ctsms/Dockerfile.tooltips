@@ -9,5 +9,5 @@ RUN set -eu \
  && mkdir -p /tmp/warpack/resources/images/tooltips \
  && cp /tmp/tooltips/*.png /tmp/warpack/resources/images/tooltips/ \
  && cd /tmp/warpack \
- && jar uf "${CATALINA_BASE}/webapps/ROOT.war" resources/images/tooltips \
+ && zip -q -r "${CATALINA_BASE}/webapps/ROOT.war" resources/images/tooltips \
  && rm -rf /tmp/warpack /tmp/tooltips

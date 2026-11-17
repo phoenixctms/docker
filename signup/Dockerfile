@@ -68,21 +68,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsys-cpuaffinity-perl \
     libtest-utf8-perl \
     libmoosex-hasdefaults-perl \
-    gnuplot \
-    imagemagick \
-    ghostscript \
     build-essential \
     cpanminus \
     curl \
     ca-certificates \
-    default-jre-headless \
- && rm -rf /var/lib/apt/lists/* \
  && cpanm --notest Dancer::Plugin::I18N \
  && cpanm --notest Dancer::Session::Redis \
  && cpanm --notest DateTime::Format::Excel \
  && cpanm --notest Spreadsheet::Reader::Format \
  && cpanm --notest Spreadsheet::Reader::ExcelXML \
- && cpanm --notest Tie::IxHash
+ && cpanm --notest Tie::IxHash \
+ && rm -rf /root/.cpanm \
+ && apt-get purge -y build-essential cpanminus \
+ && apt-get autoremove -y --purge \
+ && rm -rf /var/lib/apt/lists/*
 
 # config-default first (Signup cfg/yml/i18n), then bulk-processor code on top.
 RUN mkdir -p /ctsms \

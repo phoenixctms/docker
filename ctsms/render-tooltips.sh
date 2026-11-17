@@ -14,7 +14,7 @@ export CATALINA_BASE="${CATALINA_BASE:-/usr/local/tomcat}"
 if [ ! -d "$CATALINA_BASE/webapps/ROOT/WEB-INF/lib" ]; then
   echo "Exploding ROOT.war for dbtool classpath..."
   mkdir -p "$CATALINA_BASE/webapps/ROOT"
-  ( cd "$CATALINA_BASE/webapps/ROOT" && jar xf ../ROOT.war )
+  ( cd "$CATALINA_BASE/webapps/ROOT" && unzip -q -o ../ROOT.war )
 fi
 
 dept="$(sed -n 's/^Department passphrase (my_department): //p' /credentials/login.txt | head -n 1 | tr -d '\r')"
