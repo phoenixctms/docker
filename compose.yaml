@@ -122,7 +122,7 @@ services:
     entrypoint: ["/usr/local/bin/db-init.sh"]
     restart: "no"
 
-  # Optional Signup Dancer app (UI Perl jobs use bulk-processor inside `ctsms`)
+  # Signup Dancer app. Started when COMPOSE_PROFILES includes signup (PHOENIX_SIGNUP=true).
   signup:
     profiles: ["signup"]
     image: ${PHOENIX_SIGNUP_IMAGE:-phoenixctms/signup:latest}
@@ -137,11 +137,6 @@ services:
       redis:
         condition: service_healthy
     environment:
-      PHOENIX_DBSERVER: db
-      PHOENIX_DBPORT: 5432
-      PHOENIX_DBUSER: ${PHOENIX_POSTGRES_USER:-ctsms}
-      PHOENIX_DBPASS: ${PHOENIX_POSTGRES_PASSWORD:-ctsms}
-      PHOENIX_DBNAME: ${PHOENIX_POSTGRES_DB:-ctsms}
       PHOENIX_REDIS_HOST: redis
       PHOENIX_REDIS_PORT: 6379
       PHOENIX_APP_HTTP: http://ctsms:8080

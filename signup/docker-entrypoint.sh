@@ -1,11 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-: "${PHOENIX_DBSERVER:=db}"
-: "${PHOENIX_DBPORT:=5432}"
-: "${PHOENIX_DBUSER:=ctsms}"
-: "${PHOENIX_DBNAME:=ctsms}"
-: "${PHOENIX_DBPASS:=ctsms}"
 : "${PHOENIX_REDIS_HOST:=redis}"
 : "${PHOENIX_REDIS_PORT:=6379}"
 : "${PHOENIX_APP_HTTP:=http://ctsms:8080}"
@@ -39,11 +34,6 @@ set_cfg() {
   fi
 }
 
-set_cfg ctsms_host "$PHOENIX_DBSERVER"
-set_cfg ctsms_port "$PHOENIX_DBPORT"
-set_cfg ctsms_databasename "$PHOENIX_DBNAME"
-set_cfg ctsms_username "$PHOENIX_DBUSER"
-set_cfg ctsms_password "$PHOENIX_DBPASS"
 set_cfg ctsmsrestapi_uri "${PHOENIX_APP_HTTP}/rest"
 set_cfg ctsmsrestapi_username "my_department_cron"
 set_cfg ctsmsrestapi_realm "api"
@@ -76,5 +66,5 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "$SETTINGS" > "$tmp"
 mv "$tmp" "$SETTINGS"
 
-echo "Starting Signup (REST=${PHOENIX_APP_HTTP}/rest, Redis=${PHOENIX_REDIS_HOST}:${PHOENIX_REDIS_PORT}, DB=${PHOENIX_DBSERVER}:${PHOENIX_DBPORT}/${PHOENIX_DBNAME})."
+echo "Starting Signup (REST=${PHOENIX_APP_HTTP}/rest, Redis=${PHOENIX_REDIS_HOST}:${PHOENIX_REDIS_PORT})."
 exec "$@"

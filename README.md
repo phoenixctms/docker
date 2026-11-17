@@ -7,11 +7,11 @@ This replaces the older Tomcat 8 / Postgres 12 evaluation compose with a current
 | Service | Image / role |
 |---------|----------------|
 | `db` | PostgreSQL 17 |
-| `redis` | Redis 7, Signup sessions only (`--profile signup`) |
+| `redis` | Redis 7, Signup sessions only (starts when `PHOENIX_SIGNUP` is true) |
 | `db-migrate` | Applies schema once |
 | `ctsms` | Tomcat 10 + prebuilt Phoenix WAR + Perl bulk-processor (UI jobs). Container name `ctsms` |
 | `db-init` | Loads master data and creates the `phoenix` login |
-| `signup` | Optional Signup Dancer app (`--profile signup`) |
+| `signup` | Signup Dancer app (starts when `PHOENIX_SIGNUP` is true) |
 
 For production single-host Debian installs, keep using [`phoenixctms/install-debian`](https://github.com/phoenixctms/install-debian) / the OVA.
 
@@ -21,7 +21,7 @@ For production single-host Debian installs, keep using [`phoenixctms/install-deb
 - On Windows, [WSL2](https://learn.microsoft.com/windows/wsl/install). Docker Desktop runs on it. The bash installer runs inside WSL; the PowerShell installer runs in Windows and uses that same WSL2 backend.
 - About 6–8 GB RAM recommended
 - Port `8888` free on localhost (override with `PHOENIX_CTSMS_HTTP_PORT`; bind address with `PHOENIX_CTSMS_BIND_ADDRESS`)
-- Port `3000` free when using the signup profile (override with `PHOENIX_SIGNUP_HTTP_PORT`)
+- Port `3000` free for Signup (override with `PHOENIX_SIGNUP_HTTP_PORT`). Set `PHOENIX_SIGNUP=false` to skip Signup and Redis.
 
 ## Quick start (prebuilt images)
 
@@ -51,7 +51,7 @@ Username: phoenix
 Password: ...
 ```
 
-Open http://localhost:8888 and log in. Credentials are also stored in the `credentials` volume (`/credentials/login.txt` inside `db-init` / `ctsms`).
+Open http://localhost:8888 and log in. Credentials are also stored in the `credentials` volume (`/credentials/login.txt` inside `db-init` / `ctsms`). Signup is at http://localhost:3000 unless `PHOENIX_SIGNUP=false`.
 
 Optional demo data (set on **first** start; enabling it later does not re-import because init runs once per data volumes):
 
@@ -102,17 +102,15 @@ docker compose down -v
 
 UI/JobService Perl jobs run **inside the `ctsms` container** (same as install-debian): `/ctsms/bulk_processor/...`. No extra Compose profile is required for that.
 
-## Optional Signup
+## Signup
 
-UI Perl jobs do not need this profile. Signup is the long-running Dancer app:
-
-```bash
-docker compose --profile signup up -d
-```
+UI Perl jobs do not need Signup. Signup is the long-running Dancer app, started by default with Redis.
 
 Open http://localhost:3000 (or `PHOENIX_SIGNUP_HTTP_PORT`). There is no browser password. The start page is a site picker: choose My Department, then continue to the proband step.
 
-Signup calls the app REST API as `my_department_signup_en`, `my_department_signup_de`, and `my_department_signup_es` (password equals the username). `config.cfg` in the container is pointed at Postgres, Redis, and `my_department_cron`. The cron password is the random value `db-init` writes to `/credentials/login.txt`. Signup waits until that init has finished.
+Set `PHOENIX_SIGNUP=false` and remove the `COMPOSE_PROFILES=signup` line from `.env` to leave Signup and Redis stopped. The installer keeps that line matched to `PHOENIX_SIGNUP`.
+
+Signup calls the app REST API as `my_department_signup_en`, `my_department_signup_de`, and `my_department_signup_es` (password equals the username). `config.cfg` in the container is pointed at Redis and `my_department_cron`. The cron password is the random value `db-init` writes to `/credentials/login.txt`. Signup waits until that init has finished.
 
 ## Environment variables
 
@@ -132,7 +130,8 @@ See [`.env.example`](.env.example). Important ones:
 | `PHOENIX_OPS_DATA` | `false` | Load OPS on first init only |
 | `PHOENIX_ASP_DATA` | `false` | Load the ASP register on first init only |
 | `PHOENIX_PUBLIC_URL` | `http://localhost:8888` | Printed login URL and Signup link back to the UI |
-| `PHOENIX_SIGNUP_HTTP_PORT` | `3000` | Host port for Signup (`--profile signup`) |
+| `PHOENIX_SIGNUP` | `true` | Start Signup and Redis with `docker compose up` |
+| `PHOENIX_SIGNUP_HTTP_PORT` | `3000` | Host port for Signup |
 | `PHOENIX_CTSMS_IMAGE` | `phoenixctms/ctsms:latest` | Override the Java image (e.g. GHCR) |
 | `PHOENIX_SIGNUP_IMAGE` | `phoenixctms/signup:latest` | Override the Signup image (e.g. GHCR) |
 
@@ -143,7 +142,7 @@ See [`.env.example`](.env.example). Important ones:
 - Schema SQL is generated at image build time and applied by `db-migrate` on first start.
 - Master-data load and user creation run once in `db-init` (skips when the `phoenix` user or init marker is already present). A later start still creates any missing `my_department_signup_{en,de,es}` user.
 - Perl bulk-processor is installed in the `ctsms` image so JobService can exec `process.pl` locally.
-- Redis starts only with `--profile signup`. The Java service does not connect to it. Signup uses it for Dancer sessions.
+- Redis starts with Signup when `PHOENIX_SIGNUP` is true. The Java service does not connect to it. Signup uses it for Dancer sessions.
 
 ## License
 

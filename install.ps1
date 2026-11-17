@@ -37,11 +37,35 @@ try {
   }
 
   Set-Location $Dest
+
+  # PHOENIX_SIGNUP is the switch. Compose itself only honors COMPOSE_PROFILES.
+  $lines = [System.IO.File]::ReadAllLines($envFile)
+  $signupFlag = $env:PHOENIX_SIGNUP
+  if (-not $env:PHOENIX_SIGNUP) {
+    $match = $lines | Where-Object { $_ -match '^PHOENIX_SIGNUP=' } | Select-Object -Last 1
+    if ($match) { $signupFlag = ($match -replace '^PHOENIX_SIGNUP=', '').Trim() }
+  }
+  $lines = @($lines | Where-Object { $_ -notmatch '^COMPOSE_PROFILES=' })
+  if (-not $signupFlag -or $signupFlag -eq 'true' -or $signupFlag -eq '1') {
+    $lines += 'COMPOSE_PROFILES=signup'
+    Write-Host 'Signup is enabled.'
+  } else {
+    Write-Host "Signup is off (PHOENIX_SIGNUP=$signupFlag)."
+  }
+  $utf8 = New-Object System.Text.UTF8Encoding $false
+  [System.IO.File]::WriteAllLines($envFile, $lines, $utf8)
+
   Write-Host "Starting in $Dest"
   Write-Host 'db-init prints the UI URL and the phoenix password.'
   docker compose pull
   docker compose up -d --no-build
   docker compose logs -f db-init
+  if (-not $signupFlag -or $signupFlag -eq 'true' -or $signupFlag -eq '1') {
+    $signupPort = ($lines | Where-Object { $_ -match '^PHOENIX_SIGNUP_HTTP_PORT=' } | Select-Object -Last 1)
+    if ($signupPort) { $signupPort = ($signupPort -replace '^PHOENIX_SIGNUP_HTTP_PORT=', '').Trim() }
+    if (-not $signupPort) { $signupPort = '3000' }
+    Write-Host "Signup: http://localhost:$signupPort"
+  }
 } finally {
   if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
 }

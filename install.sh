@@ -71,8 +71,31 @@ if [ ! -f "$DEST/.env" ]; then
 fi
 
 cd "$DEST"
+
+# PHOENIX_SIGNUP is the switch. Compose itself only honors COMPOSE_PROFILES.
+signup_flag="${PHOENIX_SIGNUP-}"
+if [ -z "${PHOENIX_SIGNUP+x}" ]; then
+  signup_flag="$(sed -n 's/^PHOENIX_SIGNUP=//p' .env | tail -n 1 | tr -d '\r[:space:]')"
+fi
+tmp_env="$(mktemp)"
+grep -v '^COMPOSE_PROFILES=' .env > "$tmp_env" || true
+if [ -z "$signup_flag" ] || [ "$signup_flag" = "true" ] || [ "$signup_flag" = "1" ]; then
+  printf 'COMPOSE_PROFILES=signup\n' >> "$tmp_env"
+  echo "Signup is enabled."
+else
+  echo "Signup is off (PHOENIX_SIGNUP=${signup_flag})."
+fi
+mv "$tmp_env" .env
+
 echo "Starting in ${DEST}"
 echo "db-init prints the UI URL and the phoenix password."
 docker compose pull
 docker compose up -d --no-build
 docker compose logs -f db-init
+if [ -z "$signup_flag" ] || [ "$signup_flag" = "true" ] || [ "$signup_flag" = "1" ]; then
+  signup_port="$(sed -n 's/^PHOENIX_SIGNUP_HTTP_PORT=//p' .env | tail -n 1 | tr -d '\r[:space:]')"
+  echo "Signup: http://localhost:${signup_port:-3000}"
+fi
+if [ "${PHOENIX_DOCKER_GROUP_REEXEC:-}" = 1 ]; then
+  echo "This window was opened before the docker group was added. Open a new WSL window before running docker again."
+fi
