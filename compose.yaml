@@ -113,20 +113,19 @@ services:
     entrypoint: ["/usr/local/bin/db-init.sh"]
     restart: "no"
 
-  # Optional long-running Signup/worker sidecar (UI Perl jobs use bulk-processor inside `app`)
-  bulk:
-    profiles: ["bulk"]
-    image: ${PHOENIX_BULK_IMAGE:-phoenixctms/bulk:latest}
+  # Optional Signup Dancer app (UI Perl jobs use bulk-processor inside `app`)
+  signup:
+    profiles: ["signup"]
+    image: ${PHOENIX_SIGNUP_IMAGE:-phoenixctms/signup:latest}
     build:
-      context: ./bulk
+      context: ./signup
       args:
         BULK_TAG: ${BULK_TAG:-master}
+        CONFIG_TAG: ${CONFIG_TAG:-master}
     depends_on:
-      db:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
       redis:
-        condition: service_healthy
-      app:
         condition: service_healthy
     environment:
       DBSERVER: db
@@ -136,9 +135,20 @@ services:
       DBNAME: ${POSTGRES_DB:-ctsms}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      APP_HTTP: http://app:8080
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8888}
     volumes:
       - external_files:/ctsms/external_files
       - bulk_output:/ctsms/bulk_processor/output
+      - credentials:/credentials:ro
+    ports:
+      - "${PHOENIX_BIND_ADDRESS:-127.0.0.1}:${SIGNUP_HTTP_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/ | head -c 1 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
 
 volumes:
   postgres_data:

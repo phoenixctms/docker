@@ -1,10 +1,12 @@
-# Optional bulk-processor / Signup worker for Compose profile "bulk"
+# Optional Signup Dancer app for Compose profile "signup".
 # Use Debian system perl so apt lib*-perl packages are on @INC (matches install-debian).
 ARG BULK_TAG=master
+ARG CONFIG_TAG=master
 
 FROM debian:bookworm-slim
 
 ARG BULK_TAG
+ARG CONFIG_TAG
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -82,13 +84,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && cpanm --notest Spreadsheet::Reader::ExcelXML \
  && cpanm --notest Tie::IxHash
 
-RUN mkdir -p /ctsms/bulk_processor /ctsms/bulk_processor/output \
+# config-default first (Signup cfg/yml/i18n), then bulk-processor code on top.
+RUN mkdir -p /ctsms \
+ && curl -fsSL -o /tmp/config.tar.gz \
+      "https://github.com/phoenixctms/config-default/archive/${CONFIG_TAG}.tar.gz" \
+ && tar -xzf /tmp/config.tar.gz -C /ctsms --strip-components 1 \
+ && rm -f /tmp/config.tar.gz \
+ && mkdir -p /ctsms/bulk_processor/output \
  && curl -fsSL -o /tmp/bulk-processor.tar.gz \
       "https://github.com/phoenixctms/bulk-processor/archive/${BULK_TAG}.tar.gz" \
  && tar -xzf /tmp/bulk-processor.tar.gz -C /ctsms/bulk_processor --strip-components 1 \
  && rm -f /tmp/bulk-processor.tar.gz \
  && perl /ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/minify.pl \
       --folder=/ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/Signup \
+ && test -f /ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/Signup/settings.yml \
+ && test -f /ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/Signup/config.cfg \
+ && test -f /ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/Signup/production.yml \
  && chmod -R 755 /ctsms/bulk_processor \
  && chmod -R 777 /ctsms/bulk_processor/output \
  && curl -fsSL -o /ctsms/ecrfdataexport.sh https://raw.githubusercontent.com/phoenixctms/install-debian/master/ecrfdataexport.sh \
@@ -102,4 +113,4 @@ RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
 
 WORKDIR /ctsms/bulk_processor
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["sleep", "infinity"]
+CMD ["perl", "/ctsms/bulk_processor/CTSMS/BulkProcessor/Projects/WebApps/Signup/app.pl"]

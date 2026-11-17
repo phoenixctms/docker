@@ -47,9 +47,61 @@ print_credentials_if_present() {
   fi
 }
 
+run_dbtool() {
+  /ctsms/dbtool.sh "$@"
+}
+
+signup_user_count() {
+  local name="$1" count
+  count="$(psql -h "$DBSERVER" -p "$DBPORT" -U "$DBUSER" -d "$DBNAME" -Atc \
+    "SELECT COUNT(*) FROM users WHERE name = '${name}';" 2>/dev/null || echo 0)"
+  printf '%s' "${count:-0}"
+}
+
+ensure_signup_users() {
+  local dept_pass="$1"
+  local lang name count
+  local perms="INVENTORY_VIEW_USER_DEPARTMENT,STAFF_DETAIL_IDENTITY,COURSE_VIEW_USER_DEPARTMENT,TRIAL_SIGNUP,PROBAND_SIGNUP,USER_ACTIVE_USER,INPUT_FIELD_VIEW,MASS_MAIL_SIGNUP,INVENTORY_NO_SEARCH,STAFF_NO_SEARCH,COURSE_NO_SEARCH,TRIAL_NO_SEARCH,PROBAND_NO_SEARCH,USER_NO_SEARCH,INPUT_FIELD_NO_SEARCH,MASS_MAIL_NO_SEARCH"
+  for lang in en de es; do
+    name="my_department_signup_${lang}"
+    count="$(signup_user_count "$name")"
+    if [ "$count" = "0" ]; then
+      if [ -z "$dept_pass" ]; then
+        echo "Signup user ${name} is missing and the department passphrase is not in ${CRED_FILE}." >&2
+        return 1
+      fi
+      echo "Creating signup user ${name}..."
+      run_dbtool -cu -dlk my_department -dp "$dept_pass" \
+        -u "$name" -p "$name" -ul "$lang" \
+        -pp "$perms"
+    fi
+  done
+}
+
+department_passphrase_from_credentials() {
+  if [ ! -f "$CRED_FILE" ]; then
+    printf ''
+    return 0
+  fi
+  sed -n 's/^Department passphrase (my_department): //p' "$CRED_FILE" | head -n 1 | tr -d '\r'
+}
+
+append_signup_credentials() {
+  local lang name
+  [ -f "$CRED_FILE" ] || return 0
+  for lang in en de es; do
+    name="my_department_signup_${lang}"
+    if ! grep -q "^Signup service user (${lang}):" "$CRED_FILE"; then
+      echo "Signup service user (${lang}): ${name} / ${name}" >> "$CRED_FILE"
+    fi
+  done
+}
+
 if [ -f "$MARKER" ] || phoenix_user_exists; then
   echo "Seed already completed previously."
   print_credentials_if_present
+  ensure_signup_users "$(department_passphrase_from_credentials)"
+  append_signup_credentials
   exit 0
 fi
 
@@ -61,10 +113,6 @@ for i in $(seq 1 90); do
   sleep 5
 done
 curl -fsS "${APP_HTTP}/" >/dev/null
-
-run_dbtool() {
-  /ctsms/dbtool.sh "$@"
-}
 
 clear_app_caches() {
   echo "Clearing application caches on app..."
@@ -130,12 +178,8 @@ run_dbtool -cd -dlk my_department -dp "$DEPARTMENT_PASSWORD"
 run_dbtool -cu -dlk my_department -dp "$DEPARTMENT_PASSWORD" -u "phoenix" -p "$USER_PASSWORD" \
   -pp "INVENTORY_MASTER_ALL_DEPARTMENTS,STAFF_MASTER_ALL_DEPARTMENTS,COURSE_MASTER_ALL_DEPARTMENTS,TRIAL_MASTER_ALL_DEPARTMENTS,PROBAND_MASTER_ALL_DEPARTMENTS,USER_ALL_DEPARTMENTS,INPUT_FIELD_MASTER,MASS_MAIL_MASTER_ALL_DEPARTMENTS,INVENTORY_MASTER_SEARCH,STAFF_MASTER_SEARCH,COURSE_MASTER_SEARCH,TRIAL_MASTER_SEARCH,PROBAND_MASTER_SEARCH,USER_MASTER_SEARCH,INPUT_FIELD_MASTER_SEARCH,MASS_MAIL_MASTER_SEARCH"
 
-# Signup users for common locales (eval convenience)
-for lang in en de; do
-  run_dbtool -cu -dlk my_department -dp "$DEPARTMENT_PASSWORD" \
-    -u "my_department_signup_${lang}" -p "my_department_signup_${lang}" -ul "$lang" \
-    -pp "INVENTORY_VIEW_USER_DEPARTMENT,STAFF_DETAIL_IDENTITY,COURSE_VIEW_USER_DEPARTMENT,TRIAL_SIGNUP,PROBAND_SIGNUP,USER_ACTIVE_USER,INPUT_FIELD_VIEW,MASS_MAIL_SIGNUP,INVENTORY_NO_SEARCH,STAFF_NO_SEARCH,COURSE_NO_SEARCH,TRIAL_NO_SEARCH,PROBAND_NO_SEARCH,USER_NO_SEARCH,INPUT_FIELD_NO_SEARCH,MASS_MAIL_NO_SEARCH"
-done
+# Signup service users for every language in config-default settings.yml.
+ensure_signup_users "$DEPARTMENT_PASSWORD"
 
 run_dbtool -cu -dlk my_department -dp "$DEPARTMENT_PASSWORD" -u "my_department_cron" -p "$CRON_PASSWORD" \
   -pp "INVENTORY_MASTER_ALL_DEPARTMENTS,STAFF_MASTER_ALL_DEPARTMENTS,COURSE_MASTER_ALL_DEPARTMENTS,TRIAL_MASTER_ALL_DEPARTMENTS,PROBAND_MASTER_ALL_DEPARTMENTS,USER_ALL_DEPARTMENTS,INPUT_FIELD_MASTER,MASS_MAIL_MASTER_ALL_DEPARTMENTS,INVENTORY_MASTER_SEARCH,STAFF_MASTER_SEARCH,COURSE_MASTER_SEARCH,TRIAL_MASTER_SEARCH,PROBAND_MASTER_SEARCH,USER_MASTER_SEARCH,INPUT_FIELD_MASTER_SEARCH,MASS_MAIL_MASTER_SEARCH"
@@ -155,6 +199,9 @@ mkdir -p "$(dirname "$CRED_FILE")" "$(dirname "$MARKER")"
   echo "Password: ${USER_PASSWORD}"
   echo "Department passphrase (my_department): ${DEPARTMENT_PASSWORD}"
   echo "Cron user password (my_department_cron): ${CRON_PASSWORD}"
+  echo "Signup service user (en): my_department_signup_en / my_department_signup_en"
+  echo "Signup service user (de): my_department_signup_de / my_department_signup_de"
+  echo "Signup service user (es): my_department_signup_es / my_department_signup_es"
 } | tee "$CRED_FILE"
 
 touch "$MARKER"
