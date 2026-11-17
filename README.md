@@ -71,30 +71,28 @@ To re-init from scratch after changing init options: `docker compose --profile s
 
 From that directory later:
 
+`docker compose up -d signup` waits on `db-init` and shows that wait with a running timer. When the command returns, print the credential tail:
+
 ```bash
 docker compose pull
 docker compose up -d --no-build db redis db-migrate ctsms
-docker compose up -d --no-build --no-deps db-init
-init_id="$(docker compose ps -aq db-init | head -n 1)"
-docker wait "$init_id" >/dev/null
-docker logs "$init_id" 2>&1 | sed -n '/Phoenix CTMS initial setup complete\./,$p'
 docker compose up -d --no-build signup
+init_id="$(docker compose ps -aq db-init | head -n 1)"
+docker logs "$init_id" 2>&1 | sed -n '/Phoenix CTMS initial setup complete\./,$p'
 ```
 
 ## Build locally
 
 The installer downloads the Dockerfiles too, so this works in the install directory without git:
 
-`docker compose up -d` waits for `db-init` and does not show its log. Build, then start the dependencies, wait, and print the credential tail:
+`docker compose up -d signup` shows `db-init` as Waiting, with the timer running, until init exits. Then print the credential tail:
 
 ```bash
 docker compose build
 docker compose up -d db redis db-migrate ctsms
-docker compose up -d --no-deps db-init
-init_id="$(docker compose ps -aq db-init | head -n 1)"
-docker wait "$init_id" >/dev/null
-docker logs "$init_id" 2>&1 | sed -n '/Phoenix CTMS initial setup complete\./,$p'
 docker compose up -d signup
+init_id="$(docker compose ps -aq db-init | head -n 1)"
+docker logs "$init_id" 2>&1 | sed -n '/Phoenix CTMS initial setup complete\./,$p'
 ```
 
 Build args (optional):

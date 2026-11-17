@@ -90,29 +90,47 @@ mv "$tmp_env" .env
 echo "Starting in ${DEST}"
 echo "db-init prints the UI URL and the phoenix password."
 docker compose pull
-# Signup waits for db-init to exit. Start the dependencies, wait for db-init,
-# print only the credential tail, then start Signup.
+# Start the dependencies, then let Signup's up show the Waiting timer until
+# db-init exits. After that, print only the credential tail.
 up_services=(db db-migrate ctsms)
 if [ -z "$signup_flag" ] || [ "$signup_flag" = "true" ] || [ "$signup_flag" = "1" ]; then
   up_services+=(redis)
 fi
 docker compose up -d --no-build "${up_services[@]}"
-docker compose up -d --no-build --no-deps db-init
+# Signup depends on db-init finishing, so this up shows the Waiting timer
+# until that container exits. Then print only the credential tail.
+signup_rc=0
+if [ -z "$signup_flag" ] || [ "$signup_flag" = "true" ] || [ "$signup_flag" = "1" ]; then
+  docker compose up -d --no-build signup || signup_rc=$?
+else
+  docker compose up -d --no-build --no-deps db-init
+  init_id="$(docker compose ps -aq db-init | head -n 1)"
+  if [ -z "$init_id" ]; then
+    echo "db-init did not start." >&2
+    exit 1
+  fi
+  init_status="$(docker wait "$init_id" | tail -n 1 | tr -d '[:space:]')"
+  if [ "$init_status" != "0" ]; then
+    signup_rc=1
+  fi
+fi
 init_id="$(docker compose ps -aq db-init | head -n 1)"
 if [ -z "$init_id" ]; then
   echo "db-init did not start." >&2
   exit 1
 fi
-echo "db-init is running. The login details are printed when it finishes."
-init_status="$(docker wait "$init_id" | tail -n 1 | tr -d '[:space:]')"
+init_status="$(docker inspect -f '{{.State.ExitCode}}' "$init_id" | tr -d '[:space:]')"
 if [ "$init_status" != "0" ]; then
   docker logs "$init_id" 2>&1 | tail -n 40 >&2 || true
   echo "db-init exited with status ${init_status}." >&2
   exit 1
 fi
 docker logs "$init_id" 2>&1 | sed -n '/Phoenix CTMS initial setup complete\./,$p'
+if [ "$signup_rc" != "0" ]; then
+  echo "Signup did not start." >&2
+  exit 1
+fi
 if [ -z "$signup_flag" ] || [ "$signup_flag" = "true" ] || [ "$signup_flag" = "1" ]; then
-  docker compose up -d --no-build signup
   signup_port="$(sed -n 's/^PHOENIX_SIGNUP_HTTP_PORT=//p' .env | tail -n 1 | tr -d '\r[:space:]')"
   echo "Signup: http://localhost:${signup_port:-3000}"
 fi

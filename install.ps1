@@ -64,13 +64,29 @@ try {
     $upServices += 'redis'
   }
   docker compose up -d --no-build @upServices
-  docker compose up -d --no-build --no-deps db-init
+  if ($LASTEXITCODE -ne 0) { throw 'Starting the dependencies failed.' }
+  # Signup depends on db-init finishing, so this up shows the Waiting timer
+  # until that container exits. Then print only the credential tail.
+  $signupRc = 0
+  if (-not $signupFlag -or $signupFlag -eq 'true' -or $signupFlag -eq '1') {
+    try {
+      docker compose up -d --no-build signup
+      if ($LASTEXITCODE -ne 0) { $signupRc = $LASTEXITCODE }
+    } catch {
+      $signupRc = 1
+    }
+  } else {
+    docker compose up -d --no-build --no-deps db-init
+    if ($LASTEXITCODE -ne 0) { throw 'db-init did not start.' }
+    $initId = @(docker compose ps -aq db-init) | Select-Object -First 1
+    if (-not $initId) { throw 'db-init did not start.' }
+    $initStatus = @(docker wait $initId.Trim()) | Select-Object -Last 1
+    if ("$initStatus".Trim() -ne '0') { $signupRc = 1 }
+  }
   $initId = @(docker compose ps -aq db-init) | Select-Object -First 1
   if (-not $initId) { throw 'db-init did not start.' }
   $initId = $initId.Trim()
-  Write-Host 'db-init is running. The login details are printed when it finishes.'
-  $initStatus = @(docker wait $initId) | Select-Object -Last 1
-  $initStatus = "$initStatus".Trim()
+  $initStatus = "$(docker inspect -f '{{.State.ExitCode}}' $initId)".Trim()
   $log = docker logs $initId 2>&1 | Out-String
   if ($initStatus -ne '0') {
     $tail = ($log -split "`n" | Select-Object -Last 40) -join "`n"
@@ -81,8 +97,8 @@ try {
   $idx = $log.LastIndexOf($marker)
   if ($idx -ge 0) { Write-Host $log.Substring($idx).TrimEnd() }
   else { Write-Host $log.TrimEnd() }
+  if ($signupRc -ne 0) { throw 'Signup did not start.' }
   if (-not $signupFlag -or $signupFlag -eq 'true' -or $signupFlag -eq '1') {
-    docker compose up -d --no-build signup
     $signupPort = ($lines | Where-Object { $_ -match '^PHOENIX_SIGNUP_HTTP_PORT=' } | Select-Object -Last 1)
     if ($signupPort) { $signupPort = ($signupPort -replace '^PHOENIX_SIGNUP_HTTP_PORT=', '').Trim() }
     if (-not $signupPort) { $signupPort = '3000' }
