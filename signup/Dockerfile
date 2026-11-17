@@ -84,7 +84,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 # config-default first (Signup cfg/yml/i18n), then bulk-processor code on top.
-RUN mkdir -p /ctsms \
+# minify.pl runs YUI Compressor, so a JRE is present for this step and removed before the layer is kept.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends default-jre-headless \
+ && mkdir -p /ctsms \
  && curl -fsSL -o /tmp/config.tar.gz \
       "https://github.com/phoenixctms/config-default/archive/${CONFIG_TAG}.tar.gz" \
  && tar -xzf /tmp/config.tar.gz -C /ctsms --strip-components 1 \
@@ -105,7 +108,10 @@ RUN mkdir -p /ctsms \
  && curl -fsSL -o /ctsms/ecrfdataimport.sh https://raw.githubusercontent.com/phoenixctms/install-debian/master/ecrfdataimport.sh \
  && curl -fsSL -o /ctsms/inquirydataexport.sh https://raw.githubusercontent.com/phoenixctms/install-debian/master/inquirydataexport.sh \
  && curl -fsSL -o /ctsms/inquirydataimport.sh https://raw.githubusercontent.com/phoenixctms/install-debian/master/inquirydataimport.sh \
- && chmod 755 /ctsms/*.sh
+ && chmod 755 /ctsms/*.sh \
+ && apt-get purge -y default-jre-headless \
+ && apt-get autoremove -y --purge \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
