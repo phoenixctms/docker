@@ -65,8 +65,10 @@ From that directory later:
 
 ```bash
 docker compose pull
-docker compose up -d --no-build
+docker compose up -d --no-build db redis db-migrate ctsms
+docker compose up -d --no-build --no-deps db-init
 docker logs -f "$(docker compose ps -aq db-init | head -n 1)"
+docker compose up -d --no-build signup
 ```
 
 ## Build locally

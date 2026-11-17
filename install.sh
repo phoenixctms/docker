@@ -90,7 +90,15 @@ mv "$tmp_env" .env
 echo "Starting in ${DEST}"
 echo "db-init prints the UI URL and the phoenix password."
 docker compose pull
-docker compose up -d --no-build
+# Signup waits for db-init to exit, so a plain `up -d` hides the init log behind
+# "db-init Waiting" until that container is done. Start the dependencies, then
+# follow db-init, and start Signup after it exits.
+up_services=(db db-migrate ctsms)
+if [ -z "$signup_flag" ] || [ "$signup_flag" = "true" ] || [ "$signup_flag" = "1" ]; then
+  up_services+=(redis)
+fi
+docker compose up -d --no-build "${up_services[@]}"
+docker compose up -d --no-build --no-deps db-init
 init_id="$(docker compose ps -aq db-init | head -n 1)"
 if [ -z "$init_id" ]; then
   echo "db-init did not start." >&2
@@ -103,6 +111,7 @@ if [ "$init_status" != "0" ]; then
   exit 1
 fi
 if [ -z "$signup_flag" ] || [ "$signup_flag" = "true" ] || [ "$signup_flag" = "1" ]; then
+  docker compose up -d --no-build signup
   signup_port="$(sed -n 's/^PHOENIX_SIGNUP_HTTP_PORT=//p' .env | tail -n 1 | tr -d '\r[:space:]')"
   echo "Signup: http://localhost:${signup_port:-3000}"
 fi

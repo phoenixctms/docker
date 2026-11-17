@@ -58,13 +58,20 @@ try {
   Write-Host "Starting in $Dest"
   Write-Host 'db-init prints the UI URL and the phoenix password.'
   docker compose pull
-  docker compose up -d --no-build
+  # Signup waits for db-init to exit, so a plain `up -d` hides the init log until that container is done.
+  $upServices = @('db', 'db-migrate', 'ctsms')
+  if (-not $signupFlag -or $signupFlag -eq 'true' -or $signupFlag -eq '1') {
+    $upServices += 'redis'
+  }
+  docker compose up -d --no-build @upServices
+  docker compose up -d --no-build --no-deps db-init
   $initId = @(docker compose ps -aq db-init) | Select-Object -First 1
   if (-not $initId) { throw 'db-init did not start.' }
   docker logs -f $initId.Trim()
   $initStatus = (docker inspect -f '{{.State.ExitCode}}' $initId.Trim()).Trim()
   if ($initStatus -ne '0') { throw "db-init exited with status $initStatus." }
   if (-not $signupFlag -or $signupFlag -eq 'true' -or $signupFlag -eq '1') {
+    docker compose up -d --no-build signup
     $signupPort = ($lines | Where-Object { $_ -match '^PHOENIX_SIGNUP_HTTP_PORT=' } | Select-Object -Last 1)
     if ($signupPort) { $signupPort = ($signupPort -replace '^PHOENIX_SIGNUP_HTTP_PORT=', '').Trim() }
     if (-not $signupPort) { $signupPort = '3000' }
