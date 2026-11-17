@@ -27,14 +27,10 @@ For production single-host Debian installs, keep using [`phoenixctms/install-deb
 
 No git checkout. The installer downloads this repository and starts the published images. On Windows, install WSL2 first.
 
-Linux, macOS, or the default WSL distro. On a new Debian WSL install, `curl` is missing until you add it with your own sudo password:
+Linux, macOS, or the default WSL distro. A fresh Debian WSL has no `curl`; the command installs it with your sudo password, then runs the installer:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y curl ca-certificates
-```
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/phoenixctms/docker/master/install.sh | bash
+if ! command -v curl >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y curl ca-certificates; fi && curl -fsSL https://raw.githubusercontent.com/phoenixctms/docker/master/install.sh | bash
 ```
 
 The installer runs as that user. If the Docker socket refuses the user, it adds them to the `docker` group and continues.
