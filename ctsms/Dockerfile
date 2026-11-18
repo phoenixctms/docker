@@ -102,7 +102,6 @@ RUN apt-get update \
       libjson-perl \
       liblog-log4perl-perl \
       libmail-imapclient-perl \
-      libmarpa-r2-perl \
       libmime-lite-perl \
       libmime-tools-perl \
       libnet-address-ip-local-perl \
@@ -111,6 +110,7 @@ RUN apt-get update \
       libphp-serialization-perl \
       libexcel-writer-xlsx-perl \
       libspreadsheet-parseexcel-perl \
+      libspreadsheet-parsexlsx-perl \
       libstring-mkpasswd-perl \
       libtext-csv-xs-perl \
       libtie-ixhash-perl \
@@ -129,15 +129,11 @@ RUN apt-get update \
       libredis-perl \
       libgd-perl \
       libsys-cpuaffinity-perl \
-      libtest-utf8-perl \
-      libmoosex-hasdefaults-perl \
       build-essential \
       cpanminus \
  && cpanm --notest Dancer::Plugin::I18N \
  && cpanm --notest Dancer::Session::Redis \
  && cpanm --notest DateTime::Format::Excel \
- && cpanm --notest Spreadsheet::Reader::Format \
- && cpanm --notest Spreadsheet::Reader::ExcelXML \
  && cpanm --notest Tie::IxHash \
  && rm -rf /root/.cpanm \
  && apt-get purge -y build-essential cpanminus \
