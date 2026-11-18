@@ -192,11 +192,12 @@ RUN curl -fsSL -o /tmp/config.tar.gz \
  && sed -r -i 's|-Xms[^ ]+|-Xms512m|' /ctsms/dbtool.sh \
  && sed -r -i 's|-Xmx[^ ]+|-Xmx1536m|' /ctsms/dbtool.sh \
  && sed -r -i 's|-Xss[^ ]+|-Xss256k|' /ctsms/dbtool.sh \
+ && grep -q -- '-XX:-UseBASE64Intrinsics' /ctsms/dbtool.sh || sed -i 's/-Djava.awt.headless=true/-Djava.awt.headless=true -XX:-UseBASE64Intrinsics/' /ctsms/dbtool.sh \
  && chmod 755 /ctsms/dbtool.sh /ctsms/clearcache.sh /ctsms/ecrfdata*.sh /ctsms/inquirydata*.sh \
  && chmod 775 /ctsms /ctsms/external_files
 
 # Tomcat JVM defaults (overridable via JAVA_OPTS / entrypoint)
-ENV JAVA_OPTS="-server -Djava.awt.headless=true --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.sql/java.sql=ALL-UNNAMED -Xms512m -Xmx1536m -Xss512k -XX:+UseParallelGC -XX:MaxGCPauseMillis=1500 -XX:GCTimeRatio=9 -XX:ReservedCodeCacheSize=256m"
+ENV JAVA_OPTS="-server -Djava.awt.headless=true --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.sql/java.sql=ALL-UNNAMED -XX:-UseBASE64Intrinsics -Xms512m -Xmx1536m -Xss512k -XX:+UseParallelGC -XX:MaxGCPauseMillis=1500 -XX:GCTimeRatio=9 -XX:ReservedCodeCacheSize=256m"
 
 COPY set-properties.sh /usr/local/bin/set-properties.sh
 COPY db-migrate.sh /usr/local/bin/db-migrate.sh
